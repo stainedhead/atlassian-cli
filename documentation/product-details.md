@@ -110,27 +110,36 @@ func init() {
 }
 ```
 
-**Command organization follows domain-driven patterns** with separate packages for issue management, project operations, and confluence content. This structure mirrors the API organization while providing intuitive command hierarchies:
+**Command organization follows domain-driven patterns** with separate packages for issue management, project operations, and confluence content. This structure mirrors the API organization while providing intuitive command hierarchies with smart defaults:
 
 ```bash
-atlassian-cli issue create --project DEMO --type Story --summary "Feature request"
+# Using default project/space from configuration
+atlassian-cli issue create --type Story --summary "Feature request"
 atlassian-cli issue list --assignee currentUser --status "In Progress"
-atlassian-cli confluence page create --space DEV --title "API Documentation"
-atlassian-cli project boards --project DEMO
+atlassian-cli page create --title "API Documentation"
+
+# Overriding defaults with command flags
+atlassian-cli issue create --jira-project DEMO --type Story --summary "Feature request"
+atlassian-cli page create --confluence-space DEV --title "API Documentation"
+atlassian-cli project boards --jira-project DEMO
 ```
 
 ### Configuration management with hierarchical precedence
 
 **Viper integration provides sophisticated configuration management** following the standard precedence: explicit calls > command flags > environment variables > configuration files > defaults. This approach accommodates diverse deployment scenarios from developer laptops to CI/CD pipelines.
 
+**Default project and space configuration enables streamlined workflows** by eliminating repetitive parameter specification while maintaining override flexibility. Users can configure default JIRA projects and Confluence spaces per profile, with command-line flags providing immediate override capabilities.
+
 ```go
 type Config struct {
-    APIEndpoint string        `mapstructure:"api_endpoint" validate:"required,url"`
-    Email       string        `mapstructure:"email" validate:"required,email"`
-    Token       string        `mapstructure:"token" validate:"required"`
-    Timeout     time.Duration `mapstructure:"timeout"`
-    Output      string        `mapstructure:"output" validate:"oneof=json table yaml"`
-    Debug       bool          `mapstructure:"debug"`
+    APIEndpoint           string        `mapstructure:"api_endpoint" validate:"required,url"`
+    Email                 string        `mapstructure:"email" validate:"required,email"`
+    Token                 string        `mapstructure:"token" validate:"required"`
+    DefaultJiraProject    string        `mapstructure:"default_jira_project"`
+    DefaultConfluenceSpace string       `mapstructure:"default_confluence_space"`
+    Timeout               time.Duration `mapstructure:"timeout"`
+    Output                string        `mapstructure:"output" validate:"oneof=json table yaml"`
+    Debug                 bool          `mapstructure:"debug"`
 }
 
 func LoadConfig() (*Config, error) {
@@ -149,6 +158,8 @@ func LoadConfig() (*Config, error) {
     viper.SetDefault("timeout", 30*time.Second)
     viper.SetDefault("output", "table")
     viper.SetDefault("api_endpoint", "https://your-domain.atlassian.net")
+    viper.SetDefault("default_jira_project", "")
+    viper.SetDefault("default_confluence_space", "")
     
     if err := viper.ReadInConfig(); err != nil {
         if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
@@ -162,6 +173,19 @@ func LoadConfig() (*Config, error) {
     }
     
     return &config, validator.New().Struct(&config)
+}
+
+// Example configuration file structure
+func createExampleConfig() string {
+    return `# Atlassian CLI Configuration
+api_endpoint: "https://your-domain.atlassian.net"
+email: "user@example.com"
+default_jira_project: "DEMO"
+default_confluence_space: "DEV"
+timeout: "30s"
+output: "table"
+debug: false
+`
 }
 ```
 
@@ -260,7 +284,7 @@ func newIssueCreateCmd(apiClient *api.Client) *cobra.Command {
         },
     }
     
-    cmd.Flags().StringVar(&opts.Project, "project", "", "project key (required)")
+    cmd.Flags().StringVar(&opts.Project, "jira-project", "", "project key (overrides default)")
     cmd.Flags().StringVar(&opts.IssueType, "type", "Task", "issue type")
     cmd.Flags().StringVar(&opts.Summary, "summary", "", "issue summary (required)")
     cmd.Flags().StringVar(&opts.Description, "description", "", "issue description")
@@ -268,17 +292,25 @@ func newIssueCreateCmd(apiClient *api.Client) *cobra.Command {
     cmd.Flags().StringVar(&opts.Priority, "priority", "Medium", "issue priority")
     cmd.Flags().StringSliceVar(&opts.Labels, "labels", nil, "issue labels")
     
-    cmd.MarkFlagRequired("project")
     cmd.MarkFlagRequired("summary")
     
     return cmd
 }
 
 func runIssueCreate(client *api.Client, opts *IssueCreateOptions) error {
+    // Resolve project (flag override or default)
+    projectKey := opts.Project
+    if projectKey == "" {
+        projectKey = viper.GetString("default_jira_project")
+        if projectKey == "" {
+            return fmt.Errorf("no project specified: use --jira-project flag or set default_jira_project in config")
+        }
+    }
+    
     // Validate project exists
-    project, err := client.GetProject(opts.Project)
+    project, err := client.GetProject(projectKey)
     if err != nil {
-        return fmt.Errorf("invalid project %q: %w", opts.Project, err)
+        return fmt.Errorf("invalid project %q: %w", projectKey, err)
     }
     
     // Resolve assignee
@@ -294,7 +326,7 @@ func runIssueCreate(client *api.Client, opts *IssueCreateOptions) error {
     // Create issue payload
     issuePayload := &api.IssueCreateRequest{
         Fields: api.IssueFields{
-            Project:     api.Project{Key: opts.Project},
+            Project:     api.Project{Key: projectKey},
             IssueType:   api.IssueType{Name: opts.IssueType},
             Summary:     opts.Summary,
             Description: formatDescription(opts.Description),
@@ -323,6 +355,15 @@ func runIssueCreate(client *api.Client, opts *IssueCreateOptions) error {
 ```go
 // cmd/confluence/page.go
 func runPageCreate(client *api.Client, opts *PageCreateOptions) error {
+    // Resolve space (flag override or default)
+    spaceKey := opts.Space
+    if spaceKey == "" {
+        spaceKey = viper.GetString("default_confluence_space")
+        if spaceKey == "" {
+            return fmt.Errorf("no space specified: use --confluence-space flag or set default_confluence_space in config")
+        }
+    }
+    
     // Process content based on input method
     var content string
     var err error
@@ -343,7 +384,7 @@ func runPageCreate(client *api.Client, opts *PageCreateOptions) error {
     pagePayload := &api.PageCreateRequest{
         Type:  "page",
         Title: opts.Title,
-        Space: api.Space{Key: opts.Space},
+        Space: api.Space{Key: spaceKey},
         Body: api.Body{
             Storage: api.Content{
                 Value:          content,
@@ -354,7 +395,7 @@ func runPageCreate(client *api.Client, opts *PageCreateOptions) error {
     
     // Handle parent page relationship
     if opts.Parent != "" {
-        parent, err := client.GetPageByTitle(opts.Space, opts.Parent)
+        parent, err := client.GetPageByTitle(spaceKey, opts.Parent)
         if err != nil {
             return fmt.Errorf("parent page not found: %w", err)
         }
@@ -704,9 +745,9 @@ This appendix provides a structured reference for implementing commands across J
 
 | Command | Parameters | Description |
 |---------|------------|-------------|
-| `issue create` | `--project` (required): Project key<br>`--type`: Issue type (default: "Task")<br>`--summary` (required): Issue summary<br>`--description`: Issue description<br>`--assignee`: Username or "me"<br>`--priority`: Priority (default: "Medium")<br>`--labels`: Comma-separated labels<br>`--components`: Comma-separated components<br>`--epic-link`: Epic key for linking | Creates a new issue with specified attributes |
+| `issue create` | `--jira-project`: Project key (overrides default)<br>`--type`: Issue type (default: "Task")<br>`--summary` (required): Issue summary<br>`--description`: Issue description<br>`--assignee`: Username or "me"<br>`--priority`: Priority (default: "Medium")<br>`--labels`: Comma-separated labels<br>`--components`: Comma-separated components<br>`--epic-link`: Epic key for linking | Creates a new issue with specified attributes |
 | `issue get` | `<issue-key>` (required): Issue identifier<br>`--expand`: Fields to expand (e.g., "transitions,changelog")<br>`--output`: Output format (json, table, yaml) | Retrieves and displays issue details |
-| `issue list` | `--project`: Filter by project<br>`--assignee`: Filter by assignee<br>`--status`: Filter by status<br>`--type`: Filter by issue type<br>`--component`: Filter by component<br>`--label`: Filter by label<br>`--jql`: Custom JQL query<br>`--limit`: Max issues to return<br>`--output`: Output format | Lists issues matching specified criteria |
+| `issue list` | `--jira-project`: Filter by project (overrides default)<br>`--assignee`: Filter by assignee<br>`--status`: Filter by status<br>`--type`: Filter by issue type<br>`--component`: Filter by component<br>`--label`: Filter by label<br>`--jql`: Custom JQL query<br>`--limit`: Max issues to return<br>`--output`: Output format | Lists issues matching specified criteria |
 | `issue update` | `<issue-key>` (required): Issue identifier<br>`--summary`: New summary<br>`--description`: New description<br>`--assignee`: New assignee<br>`--priority`: New priority<br>`--status`: New status<br>`--add-label`: Labels to add<br>`--remove-label`: Labels to remove | Updates specified issue fields |
 | `issue comment` | `<issue-key>` (required): Issue identifier<br>`--text` (required): Comment text<br>`--internal`: Mark as internal comment | Adds a comment to the specified issue |
 | `issue comments` | `<issue-key>` (required): Issue identifier<br>`--limit`: Max comments to return<br>`--output`: Output format | Lists comments for specified issue |
@@ -759,9 +800,9 @@ This appendix provides a structured reference for implementing commands across J
 
 | Command | Parameters | Description |
 |---------|------------|-------------|
-| `page create` | `--space` (required): Space key<br>`--title` (required): Page title<br>`--content`: Page content text<br>`--content-file`: File containing content<br>`--parent`: Parent page title<br>`--template`: Template name<br>`--template-vars`: Template variables (JSON)<br>`--labels`: Comma-separated labels | Creates a new page with specified content |
+| `page create` | `--confluence-space`: Space key (overrides default)<br>`--title` (required): Page title<br>`--content`: Page content text<br>`--content-file`: File containing content<br>`--parent`: Parent page title<br>`--template`: Template name<br>`--template-vars`: Template variables (JSON)<br>`--labels`: Comma-separated labels | Creates a new page with specified content |
 | `page get` | `<page-id>` or `--title` & `--space`: Page identifier<br>`--expand`: Elements to expand<br>`--version`: Specific version to retrieve<br>`--output`: Output format | Retrieves and displays page content |
-| `page list` | `--space` (required): Space key<br>`--limit`: Max pages to return<br>`--labels`: Filter by labels<br>`--output`: Output format | Lists pages in specified space |
+| `page list` | `--confluence-space`: Space key (overrides default)<br>`--limit`: Max pages to return<br>`--labels`: Filter by labels<br>`--output`: Output format | Lists pages in specified space |
 | `page update` | `<page-id>` (required): Page identifier<br>`--title`: New title<br>`--content`: New content text<br>`--content-file`: File containing new content<br>`--version-comment`: Comment for version history | Updates existing page |
 | `page delete` | `<page-id>` (required): Page identifier<br>`--force`: Skip confirmation | Deletes specified page |
 | `page history` | `<page-id>` (required): Page identifier<br>`--limit`: Max versions to show<br>`--output`: Output format | Shows version history for page |
@@ -819,7 +860,7 @@ This appendix provides a structured reference for implementing commands across J
 | `config set` | `<key>` (required): Configuration key<br>`<value>` (required): Configuration value | Sets configuration value |
 | `config get` | `<key>` (optional): Configuration key to retrieve | Shows current configuration |
 | `config list` | `--output`: Output format | Lists all configuration settings |
-| `config init` | `--instance`: Atlassian instance URL<br>`--default-project`: Default project<br>`--default-space`: Default Confluence space | Creates initial configuration file |
+| `config init` | `--instance`: Atlassian instance URL<br>`--default-jira-project`: Default JIRA project<br>`--default-confluence-space`: Default Confluence space | Creates initial configuration file |
 | `config import` | `--file` (required): Configuration file to import | Imports configuration from file |
 | `config export` | `--file` (required): Destination file path<br>`--include-credentials`: Include auth credentials | Exports configuration to file |
 
@@ -828,7 +869,7 @@ This appendix provides a structured reference for implementing commands across J
 | Command | Parameters | Description |
 |---------|------------|-------------|
 | `profile list` | `--output`: Output format | Lists configured profiles |
-| `profile create` | `--name` (required): Profile name<br>`--instance`: Atlassian instance URL<br>`--default-project`: Default project<br>`--default-space`: Default Confluence space | Creates new profile |
+| `profile create` | `--name` (required): Profile name<br>`--instance`: Atlassian instance URL<br>`--default-jira-project`: Default JIRA project<br>`--default-confluence-space`: Default Confluence space | Creates new profile |
 | `profile switch` | `<name>` (required): Profile to activate | Switches to specified profile |
 | `workspace init` | `--dir`: Directory to initialize | Creates local workspace configuration |
 

@@ -1,0 +1,2873 @@
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<title>auth: Go Coverage Report</title>
+		<style>
+			body {
+				background: black;
+				color: rgb(80, 80, 80);
+			}
+			body, pre, #legend span {
+				font-family: Menlo, monospace;
+				font-weight: bold;
+			}
+			#topbar {
+				background: black;
+				position: fixed;
+				top: 0; left: 0; right: 0;
+				height: 42px;
+				border-bottom: 1px solid rgb(80, 80, 80);
+			}
+			#content {
+				margin-top: 50px;
+			}
+			#nav, #legend {
+				float: left;
+				margin-left: 10px;
+			}
+			#legend {
+				margin-top: 12px;
+			}
+			#nav {
+				margin-top: 10px;
+			}
+			#legend span {
+				margin: 0 5px;
+			}
+			.cov0 { color: rgb(192, 0, 0) }
+.cov1 { color: rgb(128, 128, 128) }
+.cov2 { color: rgb(116, 140, 131) }
+.cov3 { color: rgb(104, 152, 134) }
+.cov4 { color: rgb(92, 164, 137) }
+.cov5 { color: rgb(80, 176, 140) }
+.cov6 { color: rgb(68, 188, 143) }
+.cov7 { color: rgb(56, 200, 146) }
+.cov8 { color: rgb(44, 212, 149) }
+.cov9 { color: rgb(32, 224, 152) }
+.cov10 { color: rgb(20, 236, 155) }
+
+		</style>
+	</head>
+	<body>
+		<div id="topbar">
+			<div id="nav">
+				<select id="files">
+				
+				<option value="file0">atlassian-cli/cmd/auth/auth.go (74.2%)</option>
+				
+				<option value="file1">atlassian-cli/cmd/cache/cache.go (42.1%)</option>
+				
+				<option value="file2">atlassian-cli/cmd/config/config.go (14.5%)</option>
+				
+				<option value="file3">atlassian-cli/cmd/issue/issue.go (25.2%)</option>
+				
+				<option value="file4">atlassian-cli/cmd/page/page.go (21.5%)</option>
+				
+				<option value="file5">atlassian-cli/cmd/project/project.go (15.7%)</option>
+				
+				<option value="file6">atlassian-cli/cmd/root.go (44.6%)</option>
+				
+				<option value="file7">atlassian-cli/cmd/space/space.go (20.9%)</option>
+				
+				<option value="file8">atlassian-cli/internal/audit/audit.go (0.0%)</option>
+				
+				<option value="file9">atlassian-cli/internal/auth/auth.go (90.9%)</option>
+				
+				<option value="file10">atlassian-cli/internal/cache/cache.go (0.0%)</option>
+				
+				<option value="file11">atlassian-cli/internal/config/config.go (64.7%)</option>
+				
+				<option value="file12">atlassian-cli/internal/config/resolver.go (66.7%)</option>
+				
+				<option value="file13">atlassian-cli/internal/confluence/client.go (0.0%)</option>
+				
+				<option value="file14">atlassian-cli/internal/jira/client.go (0.0%)</option>
+				
+				<option value="file15">atlassian-cli/internal/retry/retry.go (0.0%)</option>
+				
+				<option value="file16">atlassian-cli/main.go (0.0%)</option>
+				
+				</select>
+			</div>
+			<div id="legend">
+				<span>not tracked</span>
+			
+				<span class="cov0">not covered</span>
+				<span class="cov8">covered</span>
+			
+			</div>
+		</div>
+		<div id="content">
+		
+		<pre class="file" id="file0" style="display: none">package auth
+
+import (
+        "atlassian-cli/internal/auth"
+        "atlassian-cli/internal/types"
+        "context"
+        "fmt"
+        "net/mail"
+        "net/url"
+        "strings"
+
+        "github.com/spf13/cobra"
+)
+
+// NewAuthCmd creates the auth command with subcommands
+func NewAuthCmd(tokenManager auth.TokenManager) *cobra.Command <span class="cov8" title="1">{
+        cmd := &amp;cobra.Command{
+                Use:   "auth",
+                Short: "Authentication commands",
+                Long:  `Manage authentication with Atlassian instances`,
+        }
+
+        // Add subcommands
+        cmd.AddCommand(newLoginCmd(tokenManager))
+        cmd.AddCommand(newLogoutCmd(tokenManager))
+        cmd.AddCommand(newStatusCmd(tokenManager))
+
+        return cmd
+}</span>
+
+// newLoginCmd creates the login command
+func newLoginCmd(tokenManager auth.TokenManager) *cobra.Command <span class="cov8" title="1">{
+        var (
+                serverURL string
+                email     string
+                token     string
+                noStore   bool
+        )
+
+        cmd := &amp;cobra.Command{
+                Use:   "login",
+                Short: "Authenticate with Atlassian instance",
+                Long: `Authenticate with an Atlassian instance using email and API token.
+
+Create an API token at: https://id.atlassian.com/manage/api-tokens
+
+Example:
+  atlassian-cli auth login --server https://your-domain.atlassian.net --email user@example.com --token your-api-token`,
+                RunE: func(cmd *cobra.Command, args []string) error </span><span class="cov0" title="0">{
+                        if err := validateAuthFlags(serverURL, email, token); err != nil </span><span class="cov0" title="0">{
+                                return err
+                        }</span>
+
+                        <span class="cov0" title="0">creds := &amp;types.AuthCredentials{
+                                ServerURL: serverURL,
+                                Email:     email,
+                                Token:     token,
+                        }
+
+                        if !noStore </span><span class="cov0" title="0">{
+                                if err := tokenManager.Store(context.Background(), creds); err != nil </span><span class="cov0" title="0">{
+                                        return fmt.Errorf("failed to store credentials: %w", err)
+                                }</span>
+                        }
+
+                        <span class="cov0" title="0">fmt.Fprintf(cmd.OutOrStdout(), "✓ Authenticated as %s\n", email)
+                        if !noStore </span><span class="cov0" title="0">{
+                                fmt.Fprintf(cmd.OutOrStdout(), "  Credentials stored securely\n")
+                        }</span>
+
+                        <span class="cov0" title="0">return nil</span>
+                },
+        }
+
+        <span class="cov8" title="1">cmd.Flags().StringVar(&amp;serverURL, "server", "", "Atlassian instance URL (required)")
+        cmd.Flags().StringVar(&amp;email, "email", "", "User email (required)")
+        cmd.Flags().StringVar(&amp;token, "token", "", "API token (required)")
+        cmd.Flags().BoolVar(&amp;noStore, "no-store", false, "Don't store credentials")
+
+        cmd.MarkFlagRequired("server")
+        cmd.MarkFlagRequired("email")
+        cmd.MarkFlagRequired("token")
+
+        return cmd</span>
+}
+
+// newLogoutCmd creates the logout command
+func newLogoutCmd(tokenManager auth.TokenManager) *cobra.Command <span class="cov8" title="1">{
+        var serverURL string
+
+        cmd := &amp;cobra.Command{
+                Use:   "logout",
+                Short: "Clear stored credentials",
+                Long:  `Remove stored authentication credentials for the specified server`,
+                RunE: func(cmd *cobra.Command, args []string) error </span><span class="cov8" title="1">{
+                        if serverURL == "" </span><span class="cov0" title="0">{
+                                return fmt.Errorf("server URL is required")
+                        }</span>
+
+                        <span class="cov8" title="1">if err := tokenManager.Delete(context.Background(), serverURL); err != nil </span><span class="cov0" title="0">{
+                                return fmt.Errorf("failed to delete credentials: %w", err)
+                        }</span>
+
+                        <span class="cov8" title="1">fmt.Fprintf(cmd.OutOrStdout(), "✓ Logged out from %s\n", serverURL)
+                        return nil</span>
+                },
+        }
+
+        <span class="cov8" title="1">cmd.Flags().StringVar(&amp;serverURL, "server", "", "Atlassian instance URL (required)")
+        cmd.MarkFlagRequired("server")
+
+        return cmd</span>
+}
+
+// newStatusCmd creates the status command
+func newStatusCmd(tokenManager auth.TokenManager) *cobra.Command <span class="cov8" title="1">{
+        var serverURL string
+
+        cmd := &amp;cobra.Command{
+                Use:   "status",
+                Short: "Show authentication status",
+                Long:  `Display current authentication status for the specified server`,
+                RunE: func(cmd *cobra.Command, args []string) error </span><span class="cov8" title="1">{
+                        if serverURL == "" </span><span class="cov0" title="0">{
+                                return fmt.Errorf("server URL is required")
+                        }</span>
+
+                        <span class="cov8" title="1">creds, err := tokenManager.Get(context.Background(), serverURL)
+                        if err != nil </span><span class="cov8" title="1">{
+                                fmt.Fprintf(cmd.OutOrStdout(), "Not authenticated for %s\n", serverURL)
+                                return nil
+                        }</span>
+
+                        <span class="cov8" title="1">fmt.Fprintf(cmd.OutOrStdout(), "✓ Authenticated as %s for %s\n", creds.Email, serverURL)
+                        return nil</span>
+                },
+        }
+
+        <span class="cov8" title="1">cmd.Flags().StringVar(&amp;serverURL, "server", "", "Atlassian instance URL (required)")
+        cmd.MarkFlagRequired("server")
+
+        return cmd</span>
+}
+
+// validateAuthFlags validates authentication flags
+func validateAuthFlags(serverURL, email, token string) error <span class="cov8" title="1">{
+        if serverURL == "" </span><span class="cov8" title="1">{
+                return fmt.Errorf("server URL is required")
+        }</span>
+
+        // Validate URL format
+        <span class="cov8" title="1">if _, err := url.Parse(serverURL); err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("invalid server URL: %w", err)
+        }</span>
+
+        // Ensure URL has scheme
+        <span class="cov8" title="1">if !strings.HasPrefix(serverURL, "http://") &amp;&amp; !strings.HasPrefix(serverURL, "https://") </span><span class="cov0" title="0">{
+                return fmt.Errorf("server URL must include protocol (https://)")
+        }</span>
+
+        <span class="cov8" title="1">if email == "" </span><span class="cov0" title="0">{
+                return fmt.Errorf("email is required")
+        }</span>
+
+        // Validate email format
+        <span class="cov8" title="1">if _, err := mail.ParseAddress(email); err != nil </span><span class="cov8" title="1">{
+                return fmt.Errorf("invalid email format: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">if token == "" </span><span class="cov8" title="1">{
+                return fmt.Errorf("API token is required")
+        }</span>
+
+        <span class="cov8" title="1">return nil</span>
+}</pre>
+		
+		<pre class="file" id="file1" style="display: none">package cache
+
+import (
+        "atlassian-cli/internal/cache"
+        "fmt"
+
+        "github.com/spf13/cobra"
+)
+
+// NewCacheCmd creates the cache command with subcommands
+func NewCacheCmd() *cobra.Command <span class="cov8" title="1">{
+        cmd := &amp;cobra.Command{
+                Use:   "cache",
+                Short: "Cache management operations",
+                Long:  `Manage local cache for improved performance`,
+        }
+
+        cmd.AddCommand(newClearCmd())
+        cmd.AddCommand(newStatusCmd())
+
+        return cmd
+}</span>
+
+func newClearCmd() *cobra.Command <span class="cov8" title="1">{
+        cmd := &amp;cobra.Command{
+                Use:   "clear",
+                Short: "Clear all cached data",
+                Long:  `Remove all cached entries to force fresh API calls`,
+                RunE: func(cmd *cobra.Command, args []string) error </span><span class="cov0" title="0">{
+                        c, err := cache.NewCache()
+                        if err != nil </span><span class="cov0" title="0">{
+                                return fmt.Errorf("failed to initialize cache: %w", err)
+                        }</span>
+
+                        <span class="cov0" title="0">if err := c.Clear(); err != nil </span><span class="cov0" title="0">{
+                                return fmt.Errorf("failed to clear cache: %w", err)
+                        }</span>
+
+                        <span class="cov0" title="0">fmt.Fprintf(cmd.OutOrStdout(), "✓ Cache cleared successfully\n")
+                        return nil</span>
+                },
+        }
+
+        <span class="cov8" title="1">return cmd</span>
+}
+
+func newStatusCmd() *cobra.Command <span class="cov8" title="1">{
+        cmd := &amp;cobra.Command{
+                Use:   "status",
+                Short: "Show cache status",
+                Long:  `Display information about cached data`,
+                RunE: func(cmd *cobra.Command, args []string) error </span><span class="cov0" title="0">{
+                        fmt.Fprintf(cmd.OutOrStdout(), "Cache location: ~/.atlassian-cli/cache/\n")
+                        fmt.Fprintf(cmd.OutOrStdout(), "Cache enabled: Yes\n")
+                        fmt.Fprintf(cmd.OutOrStdout(), "Default TTL: 5 minutes\n")
+                        return nil
+                }</span>,
+        }
+
+        <span class="cov8" title="1">return cmd</span>
+}</pre>
+		
+		<pre class="file" id="file2" style="display: none">package config
+
+import (
+        "atlassian-cli/internal/config"
+        "atlassian-cli/internal/types"
+        "fmt"
+
+        "github.com/spf13/cobra"
+        "github.com/spf13/viper"
+)
+
+// NewConfigCmd creates the config command with subcommands
+func NewConfigCmd() *cobra.Command <span class="cov8" title="1">{
+        cmd := &amp;cobra.Command{
+                Use:   "config",
+                Short: "Configuration management",
+                Long:  `Manage CLI configuration settings including default projects and spaces`,
+        }
+
+        // Add subcommands
+        cmd.AddCommand(newSetCmd())
+        cmd.AddCommand(newGetCmd())
+        cmd.AddCommand(newListCmd())
+
+        return cmd
+}</span>
+
+// newSetCmd creates the config set command
+func newSetCmd() *cobra.Command <span class="cov8" title="1">{
+        cmd := &amp;cobra.Command{
+                Use:   "set &lt;key&gt; &lt;value&gt;",
+                Short: "Set a configuration value",
+                Long: `Set a configuration value.
+
+Available keys:
+  default_jira_project      - Default JIRA project key
+  default_confluence_space  - Default Confluence space key
+  output                    - Default output format (json, table, yaml)
+  timeout                   - Request timeout (e.g., 30s, 1m)
+
+Examples:
+  atlassian-cli config set default_jira_project DEMO
+  atlassian-cli config set default_confluence_space DEV
+  atlassian-cli config set output json`,
+                Args: cobra.ExactArgs(2),
+                RunE: func(cmd *cobra.Command, args []string) error </span><span class="cov0" title="0">{
+                        key := args[0]
+                        value := args[1]
+
+                        // Get config file path
+                        configPath, err := getConfigPath()
+                        if err != nil </span><span class="cov0" title="0">{
+                                return fmt.Errorf("failed to get config path: %w", err)
+                        }</span>
+
+                        // Load existing config or create new one
+                        <span class="cov0" title="0">cfg, err := config.LoadConfig(configPath)
+                        if err != nil </span><span class="cov0" title="0">{
+                                // If config doesn't exist, create a new one
+                                cfg = &amp;types.Config{
+                                        Output: "table",
+                                }
+                        }</span>
+
+                        // Set the value
+                        <span class="cov0" title="0">switch key </span>{
+                        case "default_jira_project":<span class="cov0" title="0">
+                                cfg.DefaultJiraProject = value</span>
+                        case "default_confluence_space":<span class="cov0" title="0">
+                                cfg.DefaultConfluenceSpace = value</span>
+                        case "output":<span class="cov0" title="0">
+                                if value != "json" &amp;&amp; value != "table" &amp;&amp; value != "yaml" </span><span class="cov0" title="0">{
+                                        return fmt.Errorf("invalid output format: %s (must be json, table, or yaml)", value)
+                                }</span>
+                                <span class="cov0" title="0">cfg.Output = value</span>
+                        case "api_endpoint":<span class="cov0" title="0">
+                                cfg.APIEndpoint = value</span>
+                        case "email":<span class="cov0" title="0">
+                                cfg.Email = value</span>
+                        default:<span class="cov0" title="0">
+                                return fmt.Errorf("unknown configuration key: %s", key)</span>
+                        }
+
+                        // Save the config
+                        <span class="cov0" title="0">if err := config.SaveConfig(configPath, cfg); err != nil </span><span class="cov0" title="0">{
+                                return fmt.Errorf("failed to save config: %w", err)
+                        }</span>
+
+                        <span class="cov0" title="0">fmt.Fprintf(cmd.OutOrStdout(), "✓ Set %s = %s\n", key, value)
+                        return nil</span>
+                },
+        }
+
+        <span class="cov8" title="1">return cmd</span>
+}
+
+// newGetCmd creates the config get command
+func newGetCmd() *cobra.Command <span class="cov8" title="1">{
+        cmd := &amp;cobra.Command{
+                Use:   "get &lt;key&gt;",
+                Short: "Get a configuration value",
+                Long:  `Get the current value of a configuration setting`,
+                Args:  cobra.ExactArgs(1),
+                RunE: func(cmd *cobra.Command, args []string) error </span><span class="cov0" title="0">{
+                        key := args[0]
+
+                        // Get config file path
+                        configPath, err := getConfigPath()
+                        if err != nil </span><span class="cov0" title="0">{
+                                return fmt.Errorf("failed to get config path: %w", err)
+                        }</span>
+
+                        // Load config
+                        <span class="cov0" title="0">cfg, err := config.LoadConfig(configPath)
+                        if err != nil </span><span class="cov0" title="0">{
+                                return fmt.Errorf("failed to load config: %w", err)
+                        }</span>
+
+                        // Get the value
+                        <span class="cov0" title="0">var value string
+                        switch key </span>{
+                        case "default_jira_project":<span class="cov0" title="0">
+                                value = cfg.DefaultJiraProject</span>
+                        case "default_confluence_space":<span class="cov0" title="0">
+                                value = cfg.DefaultConfluenceSpace</span>
+                        case "output":<span class="cov0" title="0">
+                                value = cfg.Output</span>
+                        case "api_endpoint":<span class="cov0" title="0">
+                                value = cfg.APIEndpoint</span>
+                        case "email":<span class="cov0" title="0">
+                                value = cfg.Email</span>
+                        default:<span class="cov0" title="0">
+                                return fmt.Errorf("unknown configuration key: %s", key)</span>
+                        }
+
+                        <span class="cov0" title="0">if value == "" </span><span class="cov0" title="0">{
+                                fmt.Fprintf(cmd.OutOrStdout(), "%s is not set\n", key)
+                        }</span> else<span class="cov0" title="0"> {
+                                fmt.Fprintf(cmd.OutOrStdout(), "%s\n", value)
+                        }</span>
+
+                        <span class="cov0" title="0">return nil</span>
+                },
+        }
+
+        <span class="cov8" title="1">return cmd</span>
+}
+
+// newListCmd creates the config list command
+func newListCmd() *cobra.Command <span class="cov8" title="1">{
+        cmd := &amp;cobra.Command{
+                Use:   "list",
+                Short: "List all configuration values",
+                Long:  `Display all current configuration settings`,
+                RunE: func(cmd *cobra.Command, args []string) error </span><span class="cov0" title="0">{
+                        // Get config file path
+                        configPath, err := getConfigPath()
+                        if err != nil </span><span class="cov0" title="0">{
+                                return fmt.Errorf("failed to get config path: %w", err)
+                        }</span>
+
+                        // Load config
+                        <span class="cov0" title="0">cfg, err := config.LoadConfig(configPath)
+                        if err != nil </span><span class="cov0" title="0">{
+                                fmt.Fprintf(cmd.OutOrStdout(), "No configuration file found\n")
+                                return nil
+                        }</span>
+
+                        // Display all settings
+                        <span class="cov0" title="0">fmt.Fprintf(cmd.OutOrStdout(), "Configuration settings:\n\n")
+                        
+                        if cfg.APIEndpoint != "" </span><span class="cov0" title="0">{
+                                fmt.Fprintf(cmd.OutOrStdout(), "api_endpoint:             %s\n", cfg.APIEndpoint)
+                        }</span>
+                        <span class="cov0" title="0">if cfg.Email != "" </span><span class="cov0" title="0">{
+                                fmt.Fprintf(cmd.OutOrStdout(), "email:                    %s\n", cfg.Email)
+                        }</span>
+                        <span class="cov0" title="0">if cfg.DefaultJiraProject != "" </span><span class="cov0" title="0">{
+                                fmt.Fprintf(cmd.OutOrStdout(), "default_jira_project:     %s\n", cfg.DefaultJiraProject)
+                        }</span>
+                        <span class="cov0" title="0">if cfg.DefaultConfluenceSpace != "" </span><span class="cov0" title="0">{
+                                fmt.Fprintf(cmd.OutOrStdout(), "default_confluence_space: %s\n", cfg.DefaultConfluenceSpace)
+                        }</span>
+                        
+                        <span class="cov0" title="0">fmt.Fprintf(cmd.OutOrStdout(), "output:                   %s\n", cfg.Output)
+                        fmt.Fprintf(cmd.OutOrStdout(), "timeout:                  %s\n", cfg.Timeout)
+                        fmt.Fprintf(cmd.OutOrStdout(), "debug:                    %t\n", cfg.Debug)
+                        fmt.Fprintf(cmd.OutOrStdout(), "verbose:                  %t\n", cfg.Verbose)
+
+                        fmt.Fprintf(cmd.OutOrStdout(), "\nConfig file: %s\n", configPath)
+
+                        return nil</span>
+                },
+        }
+
+        <span class="cov8" title="1">return cmd</span>
+}
+
+// getConfigPath returns the configuration file path
+func getConfigPath() (string, error) <span class="cov0" title="0">{
+        // Check if config file is specified via flag
+        if configFile := viper.GetString("config"); configFile != "" </span><span class="cov0" title="0">{
+                return configFile, nil
+        }</span>
+
+        // Use default path
+        <span class="cov0" title="0">return config.GetDefaultConfigPath()</span>
+}</pre>
+		
+		<pre class="file" id="file3" style="display: none">package issue
+
+import (
+        "atlassian-cli/internal/auth"
+        "atlassian-cli/internal/config"
+        "atlassian-cli/internal/jira"
+        "atlassian-cli/internal/types"
+        "context"
+        "encoding/json"
+        "fmt"
+        "strings"
+
+        "github.com/spf13/cobra"
+        "github.com/spf13/viper"
+)
+
+// NewIssueCmd creates the issue command with subcommands
+func NewIssueCmd(tokenManager auth.TokenManager) *cobra.Command <span class="cov8" title="1">{
+        cmd := &amp;cobra.Command{
+                Use:   "issue",
+                Short: "JIRA issue operations",
+                Long:  `Create, read, update, and manage JIRA issues`,
+        }
+
+        // Add subcommands
+        cmd.AddCommand(newCreateCmd(tokenManager))
+        cmd.AddCommand(newGetCmd(tokenManager))
+        cmd.AddCommand(newListCmd(tokenManager))
+        cmd.AddCommand(newUpdateCmd(tokenManager))
+
+        return cmd
+}</span>
+
+// newCreateCmd creates the issue create command
+func newCreateCmd(tokenManager auth.TokenManager) *cobra.Command <span class="cov8" title="1">{
+        var (
+                project     string
+                summary     string
+                description string
+                issueType   string
+                priority    string
+                assignee    string
+                labels      []string
+                components  []string
+        )
+
+        cmd := &amp;cobra.Command{
+                Use:   "create",
+                Short: "Create a new JIRA issue",
+                Long: `Create a new JIRA issue with the specified details.
+
+Examples:
+  # Create issue using default project
+  atlassian-cli issue create --type Story --summary "New feature"
+  
+  # Override default project
+  atlassian-cli issue create --jira-project MYPROJ --type Bug --summary "Fix issue"`,
+                RunE: func(cmd *cobra.Command, args []string) error </span><span class="cov0" title="0">{
+                        // Load configuration
+                        cfg, err := config.LoadConfig(viper.GetString("config"))
+                        if err != nil </span><span class="cov0" title="0">{
+                                return fmt.Errorf("failed to load config: %w", err)
+                        }</span>
+
+                        // Resolve project using smart defaults
+                        <span class="cov0" title="0">resolvedProject, err := config.ResolveProject(project, cfg)
+                        if err != nil </span><span class="cov0" title="0">{
+                                return err
+                        }</span>
+
+                        // Get credentials
+                        <span class="cov0" title="0">creds, err := tokenManager.Get(context.Background(), cfg.APIEndpoint)
+                        if err != nil </span><span class="cov0" title="0">{
+                                return fmt.Errorf("not authenticated: %w", err)
+                        }</span>
+
+                        // Create JIRA client
+                        <span class="cov0" title="0">client, err := jira.NewAtlassianJiraClient(cfg.APIEndpoint, creds.Email, creds.Token)
+                        if err != nil </span><span class="cov0" title="0">{
+                                return fmt.Errorf("failed to create JIRA client: %w", err)
+                        }</span>
+
+                        // Create issue request
+                        <span class="cov0" title="0">req := &amp;types.CreateIssueRequest{
+                                Project:     resolvedProject,
+                                Summary:     summary,
+                                Description: description,
+                                IssueType:   issueType,
+                                Priority:    priority,
+                                Assignee:    assignee,
+                                Labels:      labels,
+                                Components:  components,
+                        }
+
+                        // Create the issue
+                        issue, err := client.CreateIssue(context.Background(), req)
+                        if err != nil </span><span class="cov0" title="0">{
+                                return fmt.Errorf("failed to create issue: %w", err)
+                        }</span>
+
+                        // Output result
+                        <span class="cov0" title="0">return outputIssue(cmd, issue)</span>
+                },
+        }
+
+        <span class="cov8" title="1">cmd.Flags().StringVar(&amp;project, "jira-project", "", "JIRA project key (overrides default)")
+        cmd.Flags().StringVar(&amp;summary, "summary", "", "Issue summary (required)")
+        cmd.Flags().StringVar(&amp;description, "description", "", "Issue description")
+        cmd.Flags().StringVar(&amp;issueType, "type", "Task", "Issue type")
+        cmd.Flags().StringVar(&amp;priority, "priority", "", "Issue priority")
+        cmd.Flags().StringVar(&amp;assignee, "assignee", "", "Issue assignee")
+        cmd.Flags().StringSliceVar(&amp;labels, "labels", nil, "Issue labels")
+        cmd.Flags().StringSliceVar(&amp;components, "components", nil, "Issue components")
+
+        cmd.MarkFlagRequired("summary")
+
+        return cmd</span>
+}
+
+// newGetCmd creates the issue get command
+func newGetCmd(tokenManager auth.TokenManager) *cobra.Command <span class="cov8" title="1">{
+        cmd := &amp;cobra.Command{
+                Use:   "get &lt;issue-key&gt;",
+                Short: "Get a JIRA issue by key",
+                Long:  `Retrieve detailed information about a JIRA issue by its key`,
+                Args:  cobra.ExactArgs(1),
+                RunE: func(cmd *cobra.Command, args []string) error </span><span class="cov0" title="0">{
+                        issueKey := args[0]
+
+                        // Load configuration
+                        cfg, err := config.LoadConfig(viper.GetString("config"))
+                        if err != nil </span><span class="cov0" title="0">{
+                                return fmt.Errorf("failed to load config: %w", err)
+                        }</span>
+
+                        // Get credentials
+                        <span class="cov0" title="0">creds, err := tokenManager.Get(context.Background(), cfg.APIEndpoint)
+                        if err != nil </span><span class="cov0" title="0">{
+                                return fmt.Errorf("not authenticated: %w", err)
+                        }</span>
+
+                        // Create JIRA client
+                        <span class="cov0" title="0">client, err := jira.NewAtlassianJiraClient(cfg.APIEndpoint, creds.Email, creds.Token)
+                        if err != nil </span><span class="cov0" title="0">{
+                                return fmt.Errorf("failed to create JIRA client: %w", err)
+                        }</span>
+
+                        // Get the issue
+                        <span class="cov0" title="0">issue, err := client.GetIssue(context.Background(), issueKey)
+                        if err != nil </span><span class="cov0" title="0">{
+                                return fmt.Errorf("failed to get issue: %w", err)
+                        }</span>
+
+                        // Output result
+                        <span class="cov0" title="0">return outputIssue(cmd, issue)</span>
+                },
+        }
+
+        <span class="cov8" title="1">return cmd</span>
+}
+
+// newListCmd creates the issue list command
+func newListCmd(tokenManager auth.TokenManager) *cobra.Command <span class="cov8" title="1">{
+        var (
+                project    string
+                status     []string
+                issueType  []string
+                assignee   string
+                maxResults int
+                startAt    int
+                jql        string
+        )
+
+        cmd := &amp;cobra.Command{
+                Use:   "list",
+                Short: "List JIRA issues",
+                Long: `List JIRA issues with optional filtering.
+
+Examples:
+  # List issues in default project
+  atlassian-cli issue list
+  
+  # List issues with specific status
+  atlassian-cli issue list --status "In Progress,Done"
+  
+  # Use custom JQL
+  atlassian-cli issue list --jql "project = DEMO AND assignee = currentUser()"`,
+                RunE: func(cmd *cobra.Command, args []string) error </span><span class="cov0" title="0">{
+                        // Load configuration
+                        cfg, err := config.LoadConfig(viper.GetString("config"))
+                        if err != nil </span><span class="cov0" title="0">{
+                                return fmt.Errorf("failed to load config: %w", err)
+                        }</span>
+
+                        // Resolve project using smart defaults (only if no JQL provided)
+                        <span class="cov0" title="0">var resolvedProject string
+                        if jql == "" </span><span class="cov0" title="0">{
+                                resolvedProject, err = config.ResolveProject(project, cfg)
+                                if err != nil </span><span class="cov0" title="0">{
+                                        return err
+                                }</span>
+                        }
+
+                        // Get credentials
+                        <span class="cov0" title="0">creds, err := tokenManager.Get(context.Background(), cfg.APIEndpoint)
+                        if err != nil </span><span class="cov0" title="0">{
+                                return fmt.Errorf("not authenticated: %w", err)
+                        }</span>
+
+                        // Create JIRA client
+                        <span class="cov0" title="0">client, err := jira.NewAtlassianJiraClient(cfg.APIEndpoint, creds.Email, creds.Token)
+                        if err != nil </span><span class="cov0" title="0">{
+                                return fmt.Errorf("failed to create JIRA client: %w", err)
+                        }</span>
+
+                        // Create list options
+                        <span class="cov0" title="0">opts := &amp;types.IssueListOptions{
+                                Project:    resolvedProject,
+                                Status:     status,
+                                IssueType:  issueType,
+                                Assignee:   assignee,
+                                MaxResults: maxResults,
+                                StartAt:    startAt,
+                                JQL:        jql,
+                        }
+
+                        // List issues
+                        response, err := client.ListIssues(context.Background(), opts)
+                        if err != nil </span><span class="cov0" title="0">{
+                                return fmt.Errorf("failed to list issues: %w", err)
+                        }</span>
+
+                        // Output result
+                        <span class="cov0" title="0">return outputIssueList(cmd, response)</span>
+                },
+        }
+
+        <span class="cov8" title="1">cmd.Flags().StringVar(&amp;project, "jira-project", "", "JIRA project key (overrides default)")
+        cmd.Flags().StringSliceVar(&amp;status, "status", nil, "Filter by status")
+        cmd.Flags().StringSliceVar(&amp;issueType, "type", nil, "Filter by issue type")
+        cmd.Flags().StringVar(&amp;assignee, "assignee", "", "Filter by assignee")
+        cmd.Flags().IntVar(&amp;maxResults, "max-results", 50, "Maximum number of results")
+        cmd.Flags().IntVar(&amp;startAt, "start-at", 0, "Starting index for pagination")
+        cmd.Flags().StringVar(&amp;jql, "jql", "", "Custom JQL query")
+
+        return cmd</span>
+}
+
+// newUpdateCmd creates the issue update command
+func newUpdateCmd(tokenManager auth.TokenManager) *cobra.Command <span class="cov8" title="1">{
+        var (
+                summary     string
+                description string
+                priority    string
+                assignee    string
+                labels      []string
+                components  []string
+        )
+
+        cmd := &amp;cobra.Command{
+                Use:   "update &lt;issue-key&gt;",
+                Short: "Update a JIRA issue",
+                Long:  `Update an existing JIRA issue with new values`,
+                Args:  cobra.ExactArgs(1),
+                RunE: func(cmd *cobra.Command, args []string) error </span><span class="cov0" title="0">{
+                        issueKey := args[0]
+
+                        // Load configuration
+                        cfg, err := config.LoadConfig(viper.GetString("config"))
+                        if err != nil </span><span class="cov0" title="0">{
+                                return fmt.Errorf("failed to load config: %w", err)
+                        }</span>
+
+                        // Get credentials
+                        <span class="cov0" title="0">creds, err := tokenManager.Get(context.Background(), cfg.APIEndpoint)
+                        if err != nil </span><span class="cov0" title="0">{
+                                return fmt.Errorf("not authenticated: %w", err)
+                        }</span>
+
+                        // Create JIRA client
+                        <span class="cov0" title="0">client, err := jira.NewAtlassianJiraClient(cfg.APIEndpoint, creds.Email, creds.Token)
+                        if err != nil </span><span class="cov0" title="0">{
+                                return fmt.Errorf("failed to create JIRA client: %w", err)
+                        }</span>
+
+                        // Build update request
+                        <span class="cov0" title="0">req := &amp;types.UpdateIssueRequest{}
+                        
+                        if summary != "" </span><span class="cov0" title="0">{
+                                req.Summary = &amp;summary
+                        }</span>
+                        <span class="cov0" title="0">if description != "" </span><span class="cov0" title="0">{
+                                req.Description = &amp;description
+                        }</span>
+                        <span class="cov0" title="0">if priority != "" </span><span class="cov0" title="0">{
+                                req.Priority = &amp;priority
+                        }</span>
+                        <span class="cov0" title="0">if assignee != "" </span><span class="cov0" title="0">{
+                                req.Assignee = &amp;assignee
+                        }</span>
+                        <span class="cov0" title="0">if len(labels) &gt; 0 </span><span class="cov0" title="0">{
+                                req.Labels = &amp;labels
+                        }</span>
+                        <span class="cov0" title="0">if len(components) &gt; 0 </span><span class="cov0" title="0">{
+                                req.Components = &amp;components
+                        }</span>
+
+                        // Update the issue
+                        <span class="cov0" title="0">issue, err := client.UpdateIssue(context.Background(), issueKey, req)
+                        if err != nil </span><span class="cov0" title="0">{
+                                return fmt.Errorf("failed to update issue: %w", err)
+                        }</span>
+
+                        // Output result
+                        <span class="cov0" title="0">return outputIssue(cmd, issue)</span>
+                },
+        }
+
+        <span class="cov8" title="1">cmd.Flags().StringVar(&amp;summary, "summary", "", "New issue summary")
+        cmd.Flags().StringVar(&amp;description, "description", "", "New issue description")
+        cmd.Flags().StringVar(&amp;priority, "priority", "", "New issue priority")
+        cmd.Flags().StringVar(&amp;assignee, "assignee", "", "New issue assignee")
+        cmd.Flags().StringSliceVar(&amp;labels, "labels", nil, "New issue labels")
+        cmd.Flags().StringSliceVar(&amp;components, "components", nil, "New issue components")
+
+        return cmd</span>
+}
+
+// outputIssue outputs a single issue in the configured format
+func outputIssue(cmd *cobra.Command, issue *types.Issue) error <span class="cov0" title="0">{
+        format := viper.GetString("output")
+        
+        switch format </span>{
+        case "json":<span class="cov0" title="0">
+                encoder := json.NewEncoder(cmd.OutOrStdout())
+                encoder.SetIndent("", "  ")
+                return encoder.Encode(issue)</span>
+        case "yaml":<span class="cov0" title="0">
+                // TODO: Implement YAML output
+                return fmt.Errorf("YAML output not yet implemented")</span>
+        default:<span class="cov0" title="0"> // table
+                fmt.Fprintf(cmd.OutOrStdout(), "Key:         %s\n", issue.Key)
+                fmt.Fprintf(cmd.OutOrStdout(), "Summary:     %s\n", issue.Summary)
+                fmt.Fprintf(cmd.OutOrStdout(), "Status:      %s\n", issue.Status)
+                fmt.Fprintf(cmd.OutOrStdout(), "Type:        %s\n", issue.IssueType)
+                fmt.Fprintf(cmd.OutOrStdout(), "Priority:    %s\n", issue.Priority)
+                fmt.Fprintf(cmd.OutOrStdout(), "Assignee:    %s\n", issue.Assignee)
+                fmt.Fprintf(cmd.OutOrStdout(), "Reporter:    %s\n", issue.Reporter)
+                fmt.Fprintf(cmd.OutOrStdout(), "Project:     %s\n", issue.Project)
+                if len(issue.Labels) &gt; 0 </span><span class="cov0" title="0">{
+                        fmt.Fprintf(cmd.OutOrStdout(), "Labels:      %s\n", strings.Join(issue.Labels, ", "))
+                }</span>
+                <span class="cov0" title="0">if len(issue.Components) &gt; 0 </span><span class="cov0" title="0">{
+                        fmt.Fprintf(cmd.OutOrStdout(), "Components:  %s\n", strings.Join(issue.Components, ", "))
+                }</span>
+                <span class="cov0" title="0">fmt.Fprintf(cmd.OutOrStdout(), "Created:     %s\n", issue.Created.Format("2006-01-02 15:04:05"))
+                fmt.Fprintf(cmd.OutOrStdout(), "Updated:     %s\n", issue.Updated.Format("2006-01-02 15:04:05"))</span>
+        }
+        
+        <span class="cov0" title="0">return nil</span>
+}
+
+// outputIssueList outputs a list of issues in the configured format
+func outputIssueList(cmd *cobra.Command, response *types.IssueListResponse) error <span class="cov0" title="0">{
+        format := viper.GetString("output")
+        
+        switch format </span>{
+        case "json":<span class="cov0" title="0">
+                encoder := json.NewEncoder(cmd.OutOrStdout())
+                encoder.SetIndent("", "  ")
+                return encoder.Encode(response)</span>
+        case "yaml":<span class="cov0" title="0">
+                // TODO: Implement YAML output
+                return fmt.Errorf("YAML output not yet implemented")</span>
+        default:<span class="cov0" title="0"> // table
+                if len(response.Issues) == 0 </span><span class="cov0" title="0">{
+                        fmt.Fprintf(cmd.OutOrStdout(), "No issues found\n")
+                        return nil
+                }</span>
+
+                // Print header
+                <span class="cov0" title="0">fmt.Fprintf(cmd.OutOrStdout(), "%-12s %-50s %-15s %-10s %-15s\n", 
+                        "KEY", "SUMMARY", "STATUS", "TYPE", "ASSIGNEE")
+                fmt.Fprintf(cmd.OutOrStdout(), "%s\n", strings.Repeat("-", 102))
+
+                // Print issues
+                for _, issue := range response.Issues </span><span class="cov0" title="0">{
+                        summary := issue.Summary
+                        if len(summary) &gt; 47 </span><span class="cov0" title="0">{
+                                summary = summary[:47] + "..."
+                        }</span>
+                        
+                        <span class="cov0" title="0">fmt.Fprintf(cmd.OutOrStdout(), "%-12s %-50s %-15s %-10s %-15s\n",
+                                issue.Key, summary, issue.Status, issue.IssueType, issue.Assignee)</span>
+                }
+
+                // Print summary
+                <span class="cov0" title="0">fmt.Fprintf(cmd.OutOrStdout(), "\nShowing %d-%d of %d issues\n",
+                        response.StartAt+1, 
+                        response.StartAt+len(response.Issues), 
+                        response.Total)</span>
+        }
+        
+        <span class="cov0" title="0">return nil</span>
+}</pre>
+		
+		<pre class="file" id="file4" style="display: none">package page
+
+import (
+        "atlassian-cli/internal/auth"
+        "atlassian-cli/internal/config"
+        "atlassian-cli/internal/confluence"
+        "atlassian-cli/internal/types"
+        "context"
+        "encoding/json"
+        "fmt"
+        "strings"
+
+        "github.com/spf13/cobra"
+        "github.com/spf13/viper"
+)
+
+// NewPageCmd creates the page command with subcommands
+func NewPageCmd(tokenManager auth.TokenManager) *cobra.Command <span class="cov8" title="1">{
+        cmd := &amp;cobra.Command{
+                Use:   "page",
+                Short: "Confluence page operations",
+                Long:  `Create, read, update, and manage Confluence pages`,
+        }
+
+        cmd.AddCommand(newCreateCmd(tokenManager))
+        cmd.AddCommand(newGetCmd(tokenManager))
+        cmd.AddCommand(newListCmd(tokenManager))
+        cmd.AddCommand(newUpdateCmd(tokenManager))
+
+        return cmd
+}</span>
+
+func newCreateCmd(tokenManager auth.TokenManager) *cobra.Command <span class="cov8" title="1">{
+        var (
+                spaceKey string
+                title    string
+                content  string
+                parentID string
+        )
+
+        cmd := &amp;cobra.Command{
+                Use:   "create",
+                Short: "Create a new Confluence page",
+                Long: `Create a new Confluence page with the specified details.
+
+Examples:
+  # Create page using default space
+  atlassian-cli page create --title "New Page" --content "Page content"
+  
+  # Override default space
+  atlassian-cli page create --confluence-space DOCS --title "API Guide"`,
+                RunE: func(cmd *cobra.Command, args []string) error </span><span class="cov0" title="0">{
+                        cfg, err := config.LoadConfig(viper.GetString("config"))
+                        if err != nil </span><span class="cov0" title="0">{
+                                return fmt.Errorf("failed to load config: %w", err)
+                        }</span>
+
+                        <span class="cov0" title="0">resolvedSpace, err := config.ResolveSpace(spaceKey, cfg)
+                        if err != nil </span><span class="cov0" title="0">{
+                                return err
+                        }</span>
+
+                        <span class="cov0" title="0">creds, err := tokenManager.Get(context.Background(), cfg.APIEndpoint)
+                        if err != nil </span><span class="cov0" title="0">{
+                                return fmt.Errorf("not authenticated: %w", err)
+                        }</span>
+
+                        <span class="cov0" title="0">client, err := confluence.NewAtlassianConfluenceClient(cfg.APIEndpoint, creds.Email, creds.Token)
+                        if err != nil </span><span class="cov0" title="0">{
+                                return fmt.Errorf("failed to create Confluence client: %w", err)
+                        }</span>
+
+                        <span class="cov0" title="0">req := &amp;types.CreatePageRequest{
+                                SpaceKey: resolvedSpace,
+                                Title:    title,
+                                Content:  content,
+                                ParentID: parentID,
+                        }
+
+                        page, err := client.CreatePage(context.Background(), req)
+                        if err != nil </span><span class="cov0" title="0">{
+                                return fmt.Errorf("failed to create page: %w", err)
+                        }</span>
+
+                        <span class="cov0" title="0">return outputPage(cmd, page)</span>
+                },
+        }
+
+        <span class="cov8" title="1">cmd.Flags().StringVar(&amp;spaceKey, "confluence-space", "", "Confluence space key (overrides default)")
+        cmd.Flags().StringVar(&amp;title, "title", "", "Page title (required)")
+        cmd.Flags().StringVar(&amp;content, "content", "", "Page content")
+        cmd.Flags().StringVar(&amp;parentID, "parent-id", "", "Parent page ID")
+
+        cmd.MarkFlagRequired("title")
+
+        return cmd</span>
+}
+
+func newGetCmd(tokenManager auth.TokenManager) *cobra.Command <span class="cov8" title="1">{
+        cmd := &amp;cobra.Command{
+                Use:   "get &lt;page-id&gt;",
+                Short: "Get a Confluence page by ID",
+                Long:  `Retrieve detailed information about a Confluence page by its ID`,
+                Args:  cobra.ExactArgs(1),
+                RunE: func(cmd *cobra.Command, args []string) error </span><span class="cov0" title="0">{
+                        pageID := args[0]
+
+                        cfg, err := config.LoadConfig(viper.GetString("config"))
+                        if err != nil </span><span class="cov0" title="0">{
+                                return fmt.Errorf("failed to load config: %w", err)
+                        }</span>
+
+                        <span class="cov0" title="0">creds, err := tokenManager.Get(context.Background(), cfg.APIEndpoint)
+                        if err != nil </span><span class="cov0" title="0">{
+                                return fmt.Errorf("not authenticated: %w", err)
+                        }</span>
+
+                        <span class="cov0" title="0">client, err := confluence.NewAtlassianConfluenceClient(cfg.APIEndpoint, creds.Email, creds.Token)
+                        if err != nil </span><span class="cov0" title="0">{
+                                return fmt.Errorf("failed to create Confluence client: %w", err)
+                        }</span>
+
+                        <span class="cov0" title="0">page, err := client.GetPage(context.Background(), pageID)
+                        if err != nil </span><span class="cov0" title="0">{
+                                return fmt.Errorf("failed to get page: %w", err)
+                        }</span>
+
+                        <span class="cov0" title="0">return outputPage(cmd, page)</span>
+                },
+        }
+
+        <span class="cov8" title="1">return cmd</span>
+}
+
+func newListCmd(tokenManager auth.TokenManager) *cobra.Command <span class="cov8" title="1">{
+        var (
+                spaceKey   string
+                title      string
+                maxResults int
+                startAt    int
+        )
+
+        cmd := &amp;cobra.Command{
+                Use:   "list",
+                Short: "List Confluence pages",
+                Long: `List Confluence pages with optional filtering.
+
+Examples:
+  # List pages in default space
+  atlassian-cli page list
+  
+  # List pages with specific title
+  atlassian-cli page list --title "API"`,
+                RunE: func(cmd *cobra.Command, args []string) error </span><span class="cov0" title="0">{
+                        cfg, err := config.LoadConfig(viper.GetString("config"))
+                        if err != nil </span><span class="cov0" title="0">{
+                                return fmt.Errorf("failed to load config: %w", err)
+                        }</span>
+
+                        <span class="cov0" title="0">var resolvedSpace string
+                        if spaceKey != "" || cfg.DefaultConfluenceSpace != "" </span><span class="cov0" title="0">{
+                                resolvedSpace, err = config.ResolveSpace(spaceKey, cfg)
+                                if err != nil </span><span class="cov0" title="0">{
+                                        return err
+                                }</span>
+                        }
+
+                        <span class="cov0" title="0">creds, err := tokenManager.Get(context.Background(), cfg.APIEndpoint)
+                        if err != nil </span><span class="cov0" title="0">{
+                                return fmt.Errorf("not authenticated: %w", err)
+                        }</span>
+
+                        <span class="cov0" title="0">client, err := confluence.NewAtlassianConfluenceClient(cfg.APIEndpoint, creds.Email, creds.Token)
+                        if err != nil </span><span class="cov0" title="0">{
+                                return fmt.Errorf("failed to create Confluence client: %w", err)
+                        }</span>
+
+                        <span class="cov0" title="0">opts := &amp;types.PageListOptions{
+                                SpaceKey:   resolvedSpace,
+                                Title:      title,
+                                MaxResults: maxResults,
+                                StartAt:    startAt,
+                        }
+
+                        response, err := client.ListPages(context.Background(), opts)
+                        if err != nil </span><span class="cov0" title="0">{
+                                return fmt.Errorf("failed to list pages: %w", err)
+                        }</span>
+
+                        <span class="cov0" title="0">return outputPageList(cmd, response)</span>
+                },
+        }
+
+        <span class="cov8" title="1">cmd.Flags().StringVar(&amp;spaceKey, "confluence-space", "", "Confluence space key (overrides default)")
+        cmd.Flags().StringVar(&amp;title, "title", "", "Filter by title")
+        cmd.Flags().IntVar(&amp;maxResults, "max-results", 25, "Maximum number of results")
+        cmd.Flags().IntVar(&amp;startAt, "start-at", 0, "Starting index for pagination")
+
+        return cmd</span>
+}
+
+func newUpdateCmd(tokenManager auth.TokenManager) *cobra.Command <span class="cov8" title="1">{
+        var (
+                title   string
+                content string
+        )
+
+        cmd := &amp;cobra.Command{
+                Use:   "update &lt;page-id&gt;",
+                Short: "Update a Confluence page",
+                Long:  `Update an existing Confluence page with new values`,
+                Args:  cobra.ExactArgs(1),
+                RunE: func(cmd *cobra.Command, args []string) error </span><span class="cov0" title="0">{
+                        pageID := args[0]
+
+                        cfg, err := config.LoadConfig(viper.GetString("config"))
+                        if err != nil </span><span class="cov0" title="0">{
+                                return fmt.Errorf("failed to load config: %w", err)
+                        }</span>
+
+                        <span class="cov0" title="0">creds, err := tokenManager.Get(context.Background(), cfg.APIEndpoint)
+                        if err != nil </span><span class="cov0" title="0">{
+                                return fmt.Errorf("not authenticated: %w", err)
+                        }</span>
+
+                        <span class="cov0" title="0">client, err := confluence.NewAtlassianConfluenceClient(cfg.APIEndpoint, creds.Email, creds.Token)
+                        if err != nil </span><span class="cov0" title="0">{
+                                return fmt.Errorf("failed to create Confluence client: %w", err)
+                        }</span>
+
+                        <span class="cov0" title="0">req := &amp;types.UpdatePageRequest{}
+                        if title != "" </span><span class="cov0" title="0">{
+                                req.Title = &amp;title
+                        }</span>
+                        <span class="cov0" title="0">if content != "" </span><span class="cov0" title="0">{
+                                req.Content = &amp;content
+                        }</span>
+
+                        <span class="cov0" title="0">page, err := client.UpdatePage(context.Background(), pageID, req)
+                        if err != nil </span><span class="cov0" title="0">{
+                                return fmt.Errorf("failed to update page: %w", err)
+                        }</span>
+
+                        <span class="cov0" title="0">return outputPage(cmd, page)</span>
+                },
+        }
+
+        <span class="cov8" title="1">cmd.Flags().StringVar(&amp;title, "title", "", "New page title")
+        cmd.Flags().StringVar(&amp;content, "content", "", "New page content")
+
+        return cmd</span>
+}
+
+func outputPage(cmd *cobra.Command, page *types.Page) error <span class="cov0" title="0">{
+        format := viper.GetString("output")
+
+        switch format </span>{
+        case "json":<span class="cov0" title="0">
+                encoder := json.NewEncoder(cmd.OutOrStdout())
+                encoder.SetIndent("", "  ")
+                return encoder.Encode(page)</span>
+        default:<span class="cov0" title="0"> // table
+                fmt.Fprintf(cmd.OutOrStdout(), "ID:       %s\n", page.ID)
+                fmt.Fprintf(cmd.OutOrStdout(), "Title:    %s\n", page.Title)
+                fmt.Fprintf(cmd.OutOrStdout(), "Space:    %s\n", page.SpaceKey)
+                fmt.Fprintf(cmd.OutOrStdout(), "Version:  %d\n", page.Version)
+                fmt.Fprintf(cmd.OutOrStdout(), "Updated:  %s\n", page.Updated.Format("2006-01-02 15:04:05"))
+                if page.Content != "" </span><span class="cov0" title="0">{
+                        content := page.Content
+                        if len(content) &gt; 100 </span><span class="cov0" title="0">{
+                                content = content[:100] + "..."
+                        }</span>
+                        <span class="cov0" title="0">fmt.Fprintf(cmd.OutOrStdout(), "Content:  %s\n", content)</span>
+                }
+        }
+
+        <span class="cov0" title="0">return nil</span>
+}
+
+func outputPageList(cmd *cobra.Command, response *types.PageListResponse) error <span class="cov0" title="0">{
+        format := viper.GetString("output")
+
+        switch format </span>{
+        case "json":<span class="cov0" title="0">
+                encoder := json.NewEncoder(cmd.OutOrStdout())
+                encoder.SetIndent("", "  ")
+                return encoder.Encode(response)</span>
+        default:<span class="cov0" title="0"> // table
+                if len(response.Pages) == 0 </span><span class="cov0" title="0">{
+                        fmt.Fprintf(cmd.OutOrStdout(), "No pages found\n")
+                        return nil
+                }</span>
+
+                <span class="cov0" title="0">fmt.Fprintf(cmd.OutOrStdout(), "%-15s %-50s %-10s %-8s\n",
+                        "ID", "TITLE", "SPACE", "VERSION")
+                fmt.Fprintf(cmd.OutOrStdout(), "%s\n", strings.Repeat("-", 83))
+
+                for _, page := range response.Pages </span><span class="cov0" title="0">{
+                        title := page.Title
+                        if len(title) &gt; 47 </span><span class="cov0" title="0">{
+                                title = title[:47] + "..."
+                        }</span>
+
+                        <span class="cov0" title="0">fmt.Fprintf(cmd.OutOrStdout(), "%-15s %-50s %-10s %-8d\n",
+                                page.ID, title, page.SpaceKey, page.Version)</span>
+                }
+
+                <span class="cov0" title="0">fmt.Fprintf(cmd.OutOrStdout(), "\nShowing %d-%d of %d pages\n",
+                        response.StartAt+1,
+                        response.StartAt+len(response.Pages),
+                        response.Total)</span>
+        }
+
+        <span class="cov0" title="0">return nil</span>
+}</pre>
+		
+		<pre class="file" id="file5" style="display: none">package project
+
+import (
+        "atlassian-cli/internal/auth"
+        "atlassian-cli/internal/config"
+        "atlassian-cli/internal/jira"
+        "atlassian-cli/internal/types"
+        "context"
+        "encoding/json"
+        "fmt"
+        "strings"
+
+        "github.com/spf13/cobra"
+        "github.com/spf13/viper"
+)
+
+// NewProjectCmd creates the project command with subcommands
+func NewProjectCmd(tokenManager auth.TokenManager) *cobra.Command <span class="cov8" title="1">{
+        cmd := &amp;cobra.Command{
+                Use:   "project",
+                Short: "JIRA project operations",
+                Long:  `List and manage JIRA projects`,
+        }
+
+        cmd.AddCommand(newListCmd(tokenManager))
+        cmd.AddCommand(newGetCmd(tokenManager))
+
+        return cmd
+}</span>
+
+func newListCmd(tokenManager auth.TokenManager) *cobra.Command <span class="cov8" title="1">{
+        var (
+                maxResults int
+                startAt    int
+        )
+
+        cmd := &amp;cobra.Command{
+                Use:   "list",
+                Short: "List JIRA projects",
+                Long: `List JIRA projects.
+
+Examples:
+  # List all projects
+  atlassian-cli project list`,
+                RunE: func(cmd *cobra.Command, args []string) error </span><span class="cov0" title="0">{
+                        cfg, err := config.LoadConfig(viper.GetString("config"))
+                        if err != nil </span><span class="cov0" title="0">{
+                                return fmt.Errorf("failed to load config: %w", err)
+                        }</span>
+
+                        <span class="cov0" title="0">creds, err := tokenManager.Get(context.Background(), cfg.APIEndpoint)
+                        if err != nil </span><span class="cov0" title="0">{
+                                return fmt.Errorf("not authenticated: %w", err)
+                        }</span>
+
+                        <span class="cov0" title="0">client, err := jira.NewAtlassianJiraClient(cfg.APIEndpoint, creds.Email, creds.Token)
+                        if err != nil </span><span class="cov0" title="0">{
+                                return fmt.Errorf("failed to create JIRA client: %w", err)
+                        }</span>
+
+                        <span class="cov0" title="0">opts := &amp;types.ProjectListOptions{
+                                MaxResults: maxResults,
+                                StartAt:    startAt,
+                        }
+
+                        response, err := client.ListProjects(context.Background(), opts)
+                        if err != nil </span><span class="cov0" title="0">{
+                                return fmt.Errorf("failed to list projects: %w", err)
+                        }</span>
+
+                        <span class="cov0" title="0">return outputProjectList(cmd, response)</span>
+                },
+        }
+
+        <span class="cov8" title="1">cmd.Flags().IntVar(&amp;maxResults, "max-results", 50, "Maximum number of results")
+        cmd.Flags().IntVar(&amp;startAt, "start-at", 0, "Starting index for pagination")
+
+        return cmd</span>
+}
+
+func newGetCmd(tokenManager auth.TokenManager) *cobra.Command <span class="cov8" title="1">{
+        cmd := &amp;cobra.Command{
+                Use:   "get &lt;project-key&gt;",
+                Short: "Get a JIRA project by key",
+                Long:  `Retrieve detailed information about a JIRA project by its key`,
+                Args:  cobra.ExactArgs(1),
+                RunE: func(cmd *cobra.Command, args []string) error </span><span class="cov0" title="0">{
+                        projectKey := args[0]
+
+                        cfg, err := config.LoadConfig(viper.GetString("config"))
+                        if err != nil </span><span class="cov0" title="0">{
+                                return fmt.Errorf("failed to load config: %w", err)
+                        }</span>
+
+                        <span class="cov0" title="0">creds, err := tokenManager.Get(context.Background(), cfg.APIEndpoint)
+                        if err != nil </span><span class="cov0" title="0">{
+                                return fmt.Errorf("not authenticated: %w", err)
+                        }</span>
+
+                        <span class="cov0" title="0">client, err := jira.NewAtlassianJiraClient(cfg.APIEndpoint, creds.Email, creds.Token)
+                        if err != nil </span><span class="cov0" title="0">{
+                                return fmt.Errorf("failed to create JIRA client: %w", err)
+                        }</span>
+
+                        <span class="cov0" title="0">project, err := client.GetProject(context.Background(), projectKey)
+                        if err != nil </span><span class="cov0" title="0">{
+                                return fmt.Errorf("failed to get project: %w", err)
+                        }</span>
+
+                        <span class="cov0" title="0">return outputProject(cmd, project)</span>
+                },
+        }
+
+        <span class="cov8" title="1">return cmd</span>
+}
+
+func outputProject(cmd *cobra.Command, project *types.Project) error <span class="cov0" title="0">{
+        format := viper.GetString("output")
+
+        switch format </span>{
+        case "json":<span class="cov0" title="0">
+                encoder := json.NewEncoder(cmd.OutOrStdout())
+                encoder.SetIndent("", "  ")
+                return encoder.Encode(project)</span>
+        default:<span class="cov0" title="0"> // table
+                fmt.Fprintf(cmd.OutOrStdout(), "Key:         %s\n", project.Key)
+                fmt.Fprintf(cmd.OutOrStdout(), "Name:        %s\n", project.Name)
+                fmt.Fprintf(cmd.OutOrStdout(), "Description: %s\n", project.Description)
+                fmt.Fprintf(cmd.OutOrStdout(), "Lead:        %s\n", project.Lead)
+                fmt.Fprintf(cmd.OutOrStdout(), "Type:        %s\n", project.ProjectType)</span>
+        }
+
+        <span class="cov0" title="0">return nil</span>
+}
+
+func outputProjectList(cmd *cobra.Command, response *types.ProjectListResponse) error <span class="cov0" title="0">{
+        format := viper.GetString("output")
+
+        switch format </span>{
+        case "json":<span class="cov0" title="0">
+                encoder := json.NewEncoder(cmd.OutOrStdout())
+                encoder.SetIndent("", "  ")
+                return encoder.Encode(response)</span>
+        default:<span class="cov0" title="0"> // table
+                if len(response.Projects) == 0 </span><span class="cov0" title="0">{
+                        fmt.Fprintf(cmd.OutOrStdout(), "No projects found\n")
+                        return nil
+                }</span>
+
+                <span class="cov0" title="0">fmt.Fprintf(cmd.OutOrStdout(), "%-10s %-30s %-15s %-30s\n",
+                        "KEY", "NAME", "TYPE", "DESCRIPTION")
+                fmt.Fprintf(cmd.OutOrStdout(), "%s\n", strings.Repeat("-", 85))
+
+                for _, project := range response.Projects </span><span class="cov0" title="0">{
+                        name := project.Name
+                        if len(name) &gt; 27 </span><span class="cov0" title="0">{
+                                name = name[:27] + "..."
+                        }</span>
+
+                        <span class="cov0" title="0">description := project.Description
+                        if len(description) &gt; 27 </span><span class="cov0" title="0">{
+                                description = description[:27] + "..."
+                        }</span>
+
+                        <span class="cov0" title="0">fmt.Fprintf(cmd.OutOrStdout(), "%-10s %-30s %-15s %-30s\n",
+                                project.Key, name, project.ProjectType, description)</span>
+                }
+
+                <span class="cov0" title="0">fmt.Fprintf(cmd.OutOrStdout(), "\nShowing %d-%d of %d projects\n",
+                        response.StartAt+1,
+                        response.StartAt+len(response.Projects),
+                        response.Total)</span>
+        }
+
+        <span class="cov0" title="0">return nil</span>
+}</pre>
+		
+		<pre class="file" id="file6" style="display: none">package cmd
+
+import (
+        "fmt"
+        "os"
+
+        "atlassian-cli/cmd/auth"
+        "atlassian-cli/cmd/cache"
+        "atlassian-cli/cmd/config"
+        "atlassian-cli/cmd/issue"
+        "atlassian-cli/cmd/page"
+        "atlassian-cli/cmd/project"
+        "atlassian-cli/cmd/space"
+        authManager "atlassian-cli/internal/auth"
+
+        "github.com/spf13/cobra"
+        "github.com/spf13/viper"
+)
+
+var (
+        cfgFile         string
+        outputFormat    string
+        verbose         bool
+        debug           bool
+        jiraProject     string
+        confluenceSpace string
+        version         = "dev" // Will be set by build process
+)
+
+// newRootCmd creates the root command
+func newRootCmd() *cobra.Command <span class="cov8" title="1">{
+        cmd := &amp;cobra.Command{
+                Use:   "atlassian-cli",
+                Short: "Developer toolkit for JIRA and Confluence",
+                Long: `Atlassian CLI is a command-line tool that streamlines development workflows 
+by providing intuitive access to JIRA and Confluence operations.
+
+Features:
+• Smart default configuration for projects and spaces
+• Secure credential management with OS keychain integration  
+• Multi-format output (JSON, table, YAML)
+• Comprehensive JIRA issue and project management
+• Full Confluence page and space operations
+• Enterprise-grade reliability with caching and retry logic`,
+                Version: version,
+                PersistentPreRunE: func(cmd *cobra.Command, args []string) error </span><span class="cov0" title="0">{
+                        return initializeConfig()
+                }</span>,
+                RunE: func(cmd *cobra.Command, args []string) error <span class="cov0" title="0">{
+                        if len(args) == 0 </span><span class="cov0" title="0">{
+                                return cmd.Help()
+                        }</span>
+                        <span class="cov0" title="0">return fmt.Errorf("unknown command %q", args[0])</span>
+                },
+        }
+
+        // Global persistent flags
+        <span class="cov8" title="1">cmd.PersistentFlags().StringVar(&amp;cfgFile, "config", "", "config file (default is $HOME/.atlassian-cli/config.yaml)")
+        cmd.PersistentFlags().StringVarP(&amp;outputFormat, "output", "o", "table", "output format (json, table, yaml)")
+        cmd.PersistentFlags().BoolVarP(&amp;verbose, "verbose", "v", false, "verbose output")
+        cmd.PersistentFlags().BoolVar(&amp;debug, "debug", false, "debug output")
+        cmd.PersistentFlags().StringVar(&amp;jiraProject, "jira-project", "", "override default JIRA project")
+        cmd.PersistentFlags().StringVar(&amp;confluenceSpace, "confluence-space", "", "override default Confluence space")
+        cmd.PersistentFlags().Bool("no-color", false, "disable colored output")
+
+        // Bind flags to viper
+        viper.BindPFlag("output", cmd.PersistentFlags().Lookup("output"))
+        viper.BindPFlag("verbose", cmd.PersistentFlags().Lookup("verbose"))
+        viper.BindPFlag("debug", cmd.PersistentFlags().Lookup("debug"))
+        viper.BindPFlag("jira_project_override", cmd.PersistentFlags().Lookup("jira-project"))
+        viper.BindPFlag("confluence_space_override", cmd.PersistentFlags().Lookup("confluence-space"))
+
+        // Add subcommands
+        tokenManager := authManager.NewMemoryTokenManager()
+        cmd.AddCommand(auth.NewAuthCmd(tokenManager))
+        cmd.AddCommand(issue.NewIssueCmd(tokenManager))
+        cmd.AddCommand(project.NewProjectCmd(tokenManager))
+        cmd.AddCommand(page.NewPageCmd(tokenManager))
+        cmd.AddCommand(space.NewSpaceCmd(tokenManager))
+        cmd.AddCommand(config.NewConfigCmd())
+        cmd.AddCommand(cache.NewCacheCmd())
+        cmd.AddCommand(newCompletionCmd())
+
+        return cmd</span>
+}
+
+// Execute is the main entry point for the CLI
+func Execute() error <span class="cov0" title="0">{
+        return newRootCmd().Execute()
+}</span>
+
+// initializeConfig reads in config file and ENV variables if set
+func initializeConfig() error <span class="cov0" title="0">{
+        if cfgFile != "" </span><span class="cov0" title="0">{
+                viper.SetConfigFile(cfgFile)
+        }</span> else<span class="cov0" title="0"> {
+                // Find home directory
+                home, err := os.UserHomeDir()
+                if err != nil </span><span class="cov0" title="0">{
+                        return fmt.Errorf("failed to get home directory: %w", err)
+                }</span>
+
+                // Search config in home directory and current directory
+                <span class="cov0" title="0">viper.AddConfigPath(home + "/.atlassian-cli")
+                viper.AddConfigPath(".")
+                viper.SetConfigType("yaml")
+                viper.SetConfigName("config")</span>
+        }
+
+        // Environment variable configuration
+        <span class="cov0" title="0">viper.SetEnvPrefix("ATLASSIAN")
+        viper.AutomaticEnv()
+
+        // Set defaults
+        viper.SetDefault("timeout", "30s")
+        viper.SetDefault("output", "table")
+        viper.SetDefault("default_jira_project", "")
+        viper.SetDefault("default_confluence_space", "")
+        viper.SetDefault("debug", false)
+        viper.SetDefault("verbose", false)
+
+        // Read config file if it exists
+        if err := viper.ReadInConfig(); err != nil </span><span class="cov0" title="0">{
+                // Config file not found is not an error
+                if _, ok := err.(viper.ConfigFileNotFoundError); !ok </span><span class="cov0" title="0">{
+                        return fmt.Errorf("error reading config file: %w", err)
+                }</span>
+        }
+
+        <span class="cov0" title="0">return nil</span>
+}
+
+// newCompletionCmd creates the completion command
+func newCompletionCmd() *cobra.Command <span class="cov8" title="1">{
+        cmd := &amp;cobra.Command{
+                Use:   "completion [bash|zsh|fish|powershell]",
+                Short: "Generate completion script",
+                Long: `To load completions:
+
+Bash:
+  $ source &lt;(atlassian-cli completion bash)
+  # To load completions for each session, execute once:
+  # Linux:
+  $ atlassian-cli completion bash &gt; /etc/bash_completion.d/atlassian-cli
+  # macOS:
+  $ atlassian-cli completion bash &gt; /usr/local/etc/bash_completion.d/atlassian-cli
+
+Zsh:
+  # If shell completion is not already enabled in your environment,
+  # you will need to enable it.  You can execute the following once:
+  $ echo "autoload -U compinit; compinit" &gt;&gt; ~/.zshrc
+  # To load completions for each session, execute once:
+  $ atlassian-cli completion zsh &gt; "${fpath[1]}/_atlassian-cli"
+  # You will need to start a new shell for this setup to take effect.
+
+fish:
+  $ atlassian-cli completion fish | source
+  # To load completions for each session, execute once:
+  $ atlassian-cli completion fish &gt; ~/.config/fish/completions/atlassian-cli.fish
+
+PowerShell:
+  PS&gt; atlassian-cli completion powershell | Out-String | Invoke-Expression
+  # To load completions for every new session, run:
+  PS&gt; atlassian-cli completion powershell &gt; atlassian-cli.ps1
+  # and source this file from your PowerShell profile.
+`,
+                DisableFlagsInUseLine: true,
+                ValidArgs:             []string{"bash", "zsh", "fish", "powershell"},
+                Args:                  cobra.ExactValidArgs(1),
+                Run: func(cmd *cobra.Command, args []string) </span><span class="cov0" title="0">{
+                        switch args[0] </span>{
+                        case "bash":<span class="cov0" title="0">
+                                cmd.Root().GenBashCompletion(cmd.OutOrStdout())</span>
+                        case "zsh":<span class="cov0" title="0">
+                                cmd.Root().GenZshCompletion(cmd.OutOrStdout())</span>
+                        case "fish":<span class="cov0" title="0">
+                                cmd.Root().GenFishCompletion(cmd.OutOrStdout(), true)</span>
+                        case "powershell":<span class="cov0" title="0">
+                                cmd.Root().GenPowerShellCompletionWithDesc(cmd.OutOrStdout())</span>
+                        }
+                },
+        }
+
+        <span class="cov8" title="1">return cmd</span>
+}</pre>
+		
+		<pre class="file" id="file7" style="display: none">package space
+
+import (
+        "atlassian-cli/internal/auth"
+        "atlassian-cli/internal/config"
+        "atlassian-cli/internal/confluence"
+        "atlassian-cli/internal/types"
+        "context"
+        "encoding/json"
+        "fmt"
+        "strings"
+
+        "github.com/spf13/cobra"
+        "github.com/spf13/viper"
+)
+
+// NewSpaceCmd creates the space command with subcommands
+func NewSpaceCmd(tokenManager auth.TokenManager) *cobra.Command <span class="cov8" title="1">{
+        cmd := &amp;cobra.Command{
+                Use:   "space",
+                Short: "Confluence space operations",
+                Long:  `List and manage Confluence spaces`,
+        }
+
+        cmd.AddCommand(newListCmd(tokenManager))
+
+        return cmd
+}</span>
+
+func newListCmd(tokenManager auth.TokenManager) *cobra.Command <span class="cov8" title="1">{
+        var (
+                spaceType  string
+                maxResults int
+                startAt    int
+        )
+
+        cmd := &amp;cobra.Command{
+                Use:   "list",
+                Short: "List Confluence spaces",
+                Long: `List Confluence spaces with optional filtering.
+
+Examples:
+  # List all spaces
+  atlassian-cli space list
+  
+  # List only personal spaces
+  atlassian-cli space list --type personal`,
+                RunE: func(cmd *cobra.Command, args []string) error </span><span class="cov0" title="0">{
+                        cfg, err := config.LoadConfig(viper.GetString("config"))
+                        if err != nil </span><span class="cov0" title="0">{
+                                return fmt.Errorf("failed to load config: %w", err)
+                        }</span>
+
+                        <span class="cov0" title="0">creds, err := tokenManager.Get(context.Background(), cfg.APIEndpoint)
+                        if err != nil </span><span class="cov0" title="0">{
+                                return fmt.Errorf("not authenticated: %w", err)
+                        }</span>
+
+                        <span class="cov0" title="0">client, err := confluence.NewAtlassianConfluenceClient(cfg.APIEndpoint, creds.Email, creds.Token)
+                        if err != nil </span><span class="cov0" title="0">{
+                                return fmt.Errorf("failed to create Confluence client: %w", err)
+                        }</span>
+
+                        <span class="cov0" title="0">opts := &amp;types.SpaceListOptions{
+                                Type:       spaceType,
+                                MaxResults: maxResults,
+                                StartAt:    startAt,
+                        }
+
+                        response, err := client.ListSpaces(context.Background(), opts)
+                        if err != nil </span><span class="cov0" title="0">{
+                                return fmt.Errorf("failed to list spaces: %w", err)
+                        }</span>
+
+                        <span class="cov0" title="0">return outputSpaceList(cmd, response)</span>
+                },
+        }
+
+        <span class="cov8" title="1">cmd.Flags().StringVar(&amp;spaceType, "type", "", "Filter by space type (global, personal)")
+        cmd.Flags().IntVar(&amp;maxResults, "max-results", 25, "Maximum number of results")
+        cmd.Flags().IntVar(&amp;startAt, "start-at", 0, "Starting index for pagination")
+
+        return cmd</span>
+}
+
+func outputSpaceList(cmd *cobra.Command, response *types.SpaceListResponse) error <span class="cov0" title="0">{
+        format := viper.GetString("output")
+
+        switch format </span>{
+        case "json":<span class="cov0" title="0">
+                encoder := json.NewEncoder(cmd.OutOrStdout())
+                encoder.SetIndent("", "  ")
+                return encoder.Encode(response)</span>
+        default:<span class="cov0" title="0"> // table
+                if len(response.Spaces) == 0 </span><span class="cov0" title="0">{
+                        fmt.Fprintf(cmd.OutOrStdout(), "No spaces found\n")
+                        return nil
+                }</span>
+
+                <span class="cov0" title="0">fmt.Fprintf(cmd.OutOrStdout(), "%-10s %-30s %-10s %-30s\n",
+                        "KEY", "NAME", "TYPE", "DESCRIPTION")
+                fmt.Fprintf(cmd.OutOrStdout(), "%s\n", strings.Repeat("-", 80))
+
+                for _, space := range response.Spaces </span><span class="cov0" title="0">{
+                        name := space.Name
+                        if len(name) &gt; 27 </span><span class="cov0" title="0">{
+                                name = name[:27] + "..."
+                        }</span>
+
+                        <span class="cov0" title="0">description := space.Description
+                        if len(description) &gt; 27 </span><span class="cov0" title="0">{
+                                description = description[:27] + "..."
+                        }</span>
+
+                        <span class="cov0" title="0">fmt.Fprintf(cmd.OutOrStdout(), "%-10s %-30s %-10s %-30s\n",
+                                space.Key, name, space.Type, description)</span>
+                }
+
+                <span class="cov0" title="0">fmt.Fprintf(cmd.OutOrStdout(), "\nShowing %d-%d of %d spaces\n",
+                        response.StartAt+1,
+                        response.StartAt+len(response.Spaces),
+                        response.Total)</span>
+        }
+
+        <span class="cov0" title="0">return nil</span>
+}</pre>
+		
+		<pre class="file" id="file8" style="display: none">package audit
+
+import (
+        "encoding/json"
+        "fmt"
+        "os"
+        "path/filepath"
+        "time"
+)
+
+// Event represents an audit log entry
+type Event struct {
+        Timestamp time.Time `json:"timestamp"`
+        User      string    `json:"user"`
+        Command   string    `json:"command"`
+        Args      []string  `json:"args"`
+        Success   bool      `json:"success"`
+        Error     string    `json:"error,omitempty"`
+}
+
+// Logger handles audit logging
+type Logger struct {
+        file *os.File
+}
+
+// NewLogger creates a new audit logger
+func NewLogger() (*Logger, error) <span class="cov0" title="0">{
+        home, err := os.UserHomeDir()
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to get home directory: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">logDir := filepath.Join(home, ".atlassian-cli", "logs")
+        if err := os.MkdirAll(logDir, 0755); err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to create log directory: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">logFile := filepath.Join(logDir, "audit.log")
+        file, err := os.OpenFile(logFile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to open audit log: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">return &amp;Logger{file: file}, nil</span>
+}
+
+// Log records an audit event
+func (l *Logger) Log(user, command string, args []string, success bool, err error) <span class="cov0" title="0">{
+        event := Event{
+                Timestamp: time.Now(),
+                User:      user,
+                Command:   command,
+                Args:      args,
+                Success:   success,
+        }
+
+        if err != nil </span><span class="cov0" title="0">{
+                event.Error = err.Error()
+        }</span>
+
+        <span class="cov0" title="0">data, _ := json.Marshal(event)
+        l.file.WriteString(string(data) + "\n")</span>
+}
+
+// Close closes the audit logger
+func (l *Logger) Close() error <span class="cov0" title="0">{
+        return l.file.Close()
+}</pre>
+		
+		<pre class="file" id="file9" style="display: none">package auth
+
+import (
+        "atlassian-cli/internal/types"
+        "context"
+        "fmt"
+        "sync"
+
+        "github.com/go-playground/validator/v10"
+)
+
+var validate = validator.New()
+
+// TokenManager defines the interface for storing and retrieving authentication tokens
+type TokenManager interface {
+        Store(ctx context.Context, creds *types.AuthCredentials) error
+        Get(ctx context.Context, serverURL string) (*types.AuthCredentials, error)
+        Delete(ctx context.Context, serverURL string) error
+}
+
+// MemoryTokenManager implements TokenManager using in-memory storage
+// This is primarily for testing and fallback scenarios
+type MemoryTokenManager struct {
+        credentials map[string]*types.AuthCredentials
+        mutex       sync.RWMutex
+}
+
+// NewMemoryTokenManager creates a new in-memory token manager
+func NewMemoryTokenManager() *MemoryTokenManager <span class="cov8" title="1">{
+        return &amp;MemoryTokenManager{
+                credentials: make(map[string]*types.AuthCredentials),
+        }
+}</span>
+
+// Store saves credentials in memory
+func (m *MemoryTokenManager) Store(ctx context.Context, creds *types.AuthCredentials) error <span class="cov8" title="1">{
+        if err := ValidateCredentials(creds); err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("invalid credentials: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">m.mutex.Lock()
+        defer m.mutex.Unlock()
+
+        m.credentials[creds.ServerURL] = creds
+        return nil</span>
+}
+
+// Get retrieves credentials from memory
+func (m *MemoryTokenManager) Get(ctx context.Context, serverURL string) (*types.AuthCredentials, error) <span class="cov8" title="1">{
+        m.mutex.RLock()
+        defer m.mutex.RUnlock()
+
+        creds, exists := m.credentials[serverURL]
+        if !exists </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("credentials not found for server: %s", serverURL)
+        }</span>
+
+        <span class="cov8" title="1">return creds, nil</span>
+}
+
+// Delete removes credentials from memory
+func (m *MemoryTokenManager) Delete(ctx context.Context, serverURL string) error <span class="cov8" title="1">{
+        m.mutex.Lock()
+        defer m.mutex.Unlock()
+
+        delete(m.credentials, serverURL)
+        return nil
+}</span>
+
+// ValidateCredentials validates authentication credentials
+func ValidateCredentials(creds *types.AuthCredentials) error <span class="cov8" title="1">{
+        if creds == nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("credentials cannot be nil")
+        }</span>
+
+        <span class="cov8" title="1">if err := validate.Struct(creds); err != nil </span><span class="cov8" title="1">{
+                return fmt.Errorf("credential validation failed: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">return nil</span>
+}</pre>
+		
+		<pre class="file" id="file10" style="display: none">package cache
+
+import (
+        "encoding/json"
+        "fmt"
+        "os"
+        "path/filepath"
+        "time"
+)
+
+// CacheEntry represents a cached item with TTL
+type CacheEntry struct {
+        Data      interface{} `json:"data"`
+        ExpiresAt time.Time   `json:"expires_at"`
+}
+
+// Cache provides intelligent caching with TTL
+type Cache struct {
+        dir string
+}
+
+// NewCache creates a new cache instance
+func NewCache() (*Cache, error) <span class="cov0" title="0">{
+        home, err := os.UserHomeDir()
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to get home directory: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">cacheDir := filepath.Join(home, ".atlassian-cli", "cache")
+        if err := os.MkdirAll(cacheDir, 0755); err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to create cache directory: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">return &amp;Cache{dir: cacheDir}, nil</span>
+}
+
+// Set stores data in cache with TTL
+func (c *Cache) Set(key string, data interface{}, ttl time.Duration) error <span class="cov0" title="0">{
+        entry := CacheEntry{
+                Data:      data,
+                ExpiresAt: time.Now().Add(ttl),
+        }
+
+        jsonData, err := json.Marshal(entry)
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to marshal cache entry: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">filePath := filepath.Join(c.dir, key+".json")
+        return os.WriteFile(filePath, jsonData, 0644)</span>
+}
+
+// Get retrieves data from cache if not expired
+func (c *Cache) Get(key string, target interface{}) (bool, error) <span class="cov0" title="0">{
+        filePath := filepath.Join(c.dir, key+".json")
+        
+        data, err := os.ReadFile(filePath)
+        if os.IsNotExist(err) </span><span class="cov0" title="0">{
+                return false, nil
+        }</span>
+        <span class="cov0" title="0">if err != nil </span><span class="cov0" title="0">{
+                return false, fmt.Errorf("failed to read cache file: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">var entry CacheEntry
+        if err := json.Unmarshal(data, &amp;entry); err != nil </span><span class="cov0" title="0">{
+                return false, fmt.Errorf("failed to unmarshal cache entry: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">if time.Now().After(entry.ExpiresAt) </span><span class="cov0" title="0">{
+                os.Remove(filePath) // Clean up expired entry
+                return false, nil
+        }</span>
+
+        <span class="cov0" title="0">entryData, err := json.Marshal(entry.Data)
+        if err != nil </span><span class="cov0" title="0">{
+                return false, fmt.Errorf("failed to marshal entry data: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">if err := json.Unmarshal(entryData, target); err != nil </span><span class="cov0" title="0">{
+                return false, fmt.Errorf("failed to unmarshal target: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">return true, nil</span>
+}
+
+// Clear removes all cached entries
+func (c *Cache) Clear() error <span class="cov0" title="0">{
+        return os.RemoveAll(c.dir)
+}</pre>
+		
+		<pre class="file" id="file11" style="display: none">package config
+
+import (
+        "fmt"
+        "os"
+        "path/filepath"
+        "strings"
+        "time"
+
+        "atlassian-cli/internal/types"
+
+        "github.com/go-playground/validator/v10"
+        "github.com/spf13/viper"
+)
+
+var validate = validator.New()
+
+// LoadConfig loads configuration from file and environment variables
+func LoadConfig(configFile string) (*types.Config, error) <span class="cov8" title="1">{
+        v := viper.New()
+
+        // Set config file if provided
+        if configFile != "" </span><span class="cov8" title="1">{
+                v.SetConfigFile(configFile)
+        }</span> else<span class="cov0" title="0"> {
+                // Default config locations
+                home, err := os.UserHomeDir()
+                if err != nil </span><span class="cov0" title="0">{
+                        return nil, fmt.Errorf("failed to get home directory: %w", err)
+                }</span>
+
+                <span class="cov0" title="0">v.AddConfigPath(filepath.Join(home, ".atlassian-cli"))
+                v.AddConfigPath(".")
+                v.SetConfigType("yaml")
+                v.SetConfigName("config")</span>
+        }
+
+        // Environment variable configuration
+        <span class="cov8" title="1">v.SetEnvPrefix("ATLASSIAN")
+        v.AutomaticEnv()
+        v.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
+
+        // Set defaults
+        v.SetDefault("timeout", 30*time.Second)
+        v.SetDefault("output", "table")
+        v.SetDefault("default_jira_project", "")
+        v.SetDefault("default_confluence_space", "")
+        v.SetDefault("debug", false)
+        v.SetDefault("verbose", false)
+
+        // Read config file if it exists
+        if err := v.ReadInConfig(); err != nil </span><span class="cov0" title="0">{
+                // Config file not found is not an error
+                if _, ok := err.(viper.ConfigFileNotFoundError); !ok </span><span class="cov0" title="0">{
+                        return nil, fmt.Errorf("error reading config file: %w", err)
+                }</span>
+        }
+
+        <span class="cov8" title="1">var config types.Config
+        if err := v.Unmarshal(&amp;config); err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("config unmarshal failed: %w", err)
+        }</span>
+
+        // Validate config
+        <span class="cov8" title="1">if err := validate.Struct(&amp;config); err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("config validation failed: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">return &amp;config, nil</span>
+}
+
+// SaveConfig saves configuration to file
+func SaveConfig(configFile string, config *types.Config) error <span class="cov8" title="1">{
+        // Ensure directory exists
+        dir := filepath.Dir(configFile)
+        if err := os.MkdirAll(dir, 0755); err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to create config directory: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">v := viper.New()
+        v.SetConfigFile(configFile)
+        v.SetConfigType("yaml")
+
+        // Set all config values
+        v.Set("api_endpoint", config.APIEndpoint)
+        v.Set("email", config.Email)
+        v.Set("token", config.Token)
+        v.Set("default_jira_project", config.DefaultJiraProject)
+        v.Set("default_confluence_space", config.DefaultConfluenceSpace)
+        v.Set("timeout", config.Timeout)
+        v.Set("output", config.Output)
+        v.Set("debug", config.Debug)
+        v.Set("verbose", config.Verbose)
+
+        if err := v.WriteConfig(); err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to write config file: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">return nil</span>
+}
+
+// GetDefaultConfigPath returns the default configuration file path
+func GetDefaultConfigPath() (string, error) <span class="cov0" title="0">{
+        home, err := os.UserHomeDir()
+        if err != nil </span><span class="cov0" title="0">{
+                return "", fmt.Errorf("failed to get home directory: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">configDir := filepath.Join(home, ".atlassian-cli")
+        return filepath.Join(configDir, "config.yaml"), nil</span>
+}</pre>
+		
+		<pre class="file" id="file12" style="display: none">package config
+
+import (
+        "fmt"
+        "os"
+
+        "atlassian-cli/internal/types"
+)
+
+// ResolveProject resolves the JIRA project using the hierarchy:
+// 1. Command flag override
+// 2. Environment variable
+// 3. Configuration file
+// 4. Error if none found
+func ResolveProject(flagValue string, config *types.Config) (string, error) <span class="cov8" title="1">{
+        // 1. Check command flag override
+        if flagValue != "" </span><span class="cov8" title="1">{
+                return flagValue, nil
+        }</span>
+
+        // 2. Check environment variable
+        <span class="cov8" title="1">if envValue := os.Getenv("ATLASSIAN_DEFAULT_JIRA_PROJECT"); envValue != "" </span><span class="cov8" title="1">{
+                return envValue, nil
+        }</span>
+
+        // 3. Check configuration file
+        <span class="cov8" title="1">if config != nil &amp;&amp; config.DefaultJiraProject != "" </span><span class="cov8" title="1">{
+                return config.DefaultJiraProject, nil
+        }</span>
+
+        // 4. Return error requiring explicit specification
+        <span class="cov8" title="1">return "", fmt.Errorf("no JIRA project specified: use --jira-project flag, set ATLASSIAN_DEFAULT_JIRA_PROJECT environment variable, or configure default_jira_project")</span>
+}
+
+// ResolveSpace resolves the Confluence space using the hierarchy:
+// 1. Command flag override
+// 2. Environment variable
+// 3. Configuration file
+// 4. Error if none found
+func ResolveSpace(flagValue string, config *types.Config) (string, error) <span class="cov8" title="1">{
+        // 1. Check command flag override
+        if flagValue != "" </span><span class="cov8" title="1">{
+                return flagValue, nil
+        }</span>
+
+        // 2. Check environment variable
+        <span class="cov8" title="1">if envValue := os.Getenv("ATLASSIAN_DEFAULT_CONFLUENCE_SPACE"); envValue != "" </span><span class="cov8" title="1">{
+                return envValue, nil
+        }</span>
+
+        // 3. Check configuration file
+        <span class="cov8" title="1">if config != nil &amp;&amp; config.DefaultConfluenceSpace != "" </span><span class="cov8" title="1">{
+                return config.DefaultConfluenceSpace, nil
+        }</span>
+
+        // 4. Return error requiring explicit specification
+        <span class="cov8" title="1">return "", fmt.Errorf("no Confluence space specified: use --confluence-space flag, set ATLASSIAN_DEFAULT_CONFLUENCE_SPACE environment variable, or configure default_confluence_space")</span>
+}
+
+// ResolveConfigValue resolves any configuration value using the hierarchy
+func ResolveConfigValue(flagValue, envKey, configValue, description string) (string, error) <span class="cov0" title="0">{
+        // 1. Check command flag override
+        if flagValue != "" </span><span class="cov0" title="0">{
+                return flagValue, nil
+        }</span>
+
+        // 2. Check environment variable
+        <span class="cov0" title="0">if envValue := os.Getenv(envKey); envValue != "" </span><span class="cov0" title="0">{
+                return envValue, nil
+        }</span>
+
+        // 3. Check configuration file
+        <span class="cov0" title="0">if configValue != "" </span><span class="cov0" title="0">{
+                return configValue, nil
+        }</span>
+
+        // 4. Return error requiring explicit specification
+        <span class="cov0" title="0">return "", fmt.Errorf("no %s specified: check configuration, environment variables, or command flags", description)</span>
+}</pre>
+		
+		<pre class="file" id="file13" style="display: none">package confluence
+
+import (
+        "atlassian-cli/internal/types"
+        "context"
+        "fmt"
+        "time"
+)
+
+// ConfluenceClient defines the interface for Confluence operations
+type ConfluenceClient interface {
+        CreatePage(ctx context.Context, req *types.CreatePageRequest) (*types.Page, error)
+        GetPage(ctx context.Context, id string) (*types.Page, error)
+        UpdatePage(ctx context.Context, id string, req *types.UpdatePageRequest) (*types.Page, error)
+        ListPages(ctx context.Context, opts *types.PageListOptions) (*types.PageListResponse, error)
+        ListSpaces(ctx context.Context, opts *types.SpaceListOptions) (*types.SpaceListResponse, error)
+}
+
+// MockConfluenceClient implements ConfluenceClient for demonstration
+type MockConfluenceClient struct {
+        baseURL string
+        email   string
+        token   string
+}
+
+// NewAtlassianConfluenceClient creates a new Confluence client
+func NewAtlassianConfluenceClient(baseURL, email, token string) (*MockConfluenceClient, error) <span class="cov0" title="0">{
+        if baseURL == "" || email == "" || token == "" </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("baseURL, email, and token are required")
+        }</span>
+
+        <span class="cov0" title="0">return &amp;MockConfluenceClient{
+                baseURL: baseURL,
+                email:   email,
+                token:   token,
+        }, nil</span>
+}
+
+// CreatePage creates a new Confluence page
+func (c *MockConfluenceClient) CreatePage(ctx context.Context, req *types.CreatePageRequest) (*types.Page, error) <span class="cov0" title="0">{
+        // Mock implementation for demonstration
+        return &amp;types.Page{
+                ID:       "123456",
+                Title:    req.Title,
+                Type:     "page",
+                SpaceKey: req.SpaceKey,
+                Content:  req.Content,
+                Version:  1,
+                Updated:  time.Now(),
+        }, nil
+}</span>
+
+// GetPage retrieves a Confluence page by ID
+func (c *MockConfluenceClient) GetPage(ctx context.Context, id string) (*types.Page, error) <span class="cov0" title="0">{
+        // Mock implementation for demonstration
+        return &amp;types.Page{
+                ID:       id,
+                Title:    "Sample Page",
+                Type:     "page",
+                SpaceKey: "DEMO",
+                Content:  "&lt;p&gt;This is sample page content&lt;/p&gt;",
+                Version:  2,
+                Updated:  time.Now(),
+        }, nil
+}</span>
+
+// UpdatePage updates an existing Confluence page
+func (c *MockConfluenceClient) UpdatePage(ctx context.Context, id string, req *types.UpdatePageRequest) (*types.Page, error) <span class="cov0" title="0">{
+        // Mock implementation for demonstration
+        title := "Updated Page"
+        if req.Title != nil </span><span class="cov0" title="0">{
+                title = *req.Title
+        }</span>
+
+        <span class="cov0" title="0">content := "&lt;p&gt;Updated content&lt;/p&gt;"
+        if req.Content != nil </span><span class="cov0" title="0">{
+                content = *req.Content
+        }</span>
+
+        <span class="cov0" title="0">return &amp;types.Page{
+                ID:       id,
+                Title:    title,
+                Type:     "page",
+                SpaceKey: "DEMO",
+                Content:  content,
+                Version:  3,
+                Updated:  time.Now(),
+        }, nil</span>
+}
+
+// ListPages lists pages in a space
+func (c *MockConfluenceClient) ListPages(ctx context.Context, opts *types.PageListOptions) (*types.PageListResponse, error) <span class="cov0" title="0">{
+        // Mock implementation for demonstration
+        pages := []types.Page{
+                {
+                        ID:       "123456",
+                        Title:    "Getting Started",
+                        Type:     "page",
+                        SpaceKey: "DEMO",
+                        Version:  1,
+                        Updated:  time.Now().Add(-24 * time.Hour),
+                },
+                {
+                        ID:       "123457",
+                        Title:    "API Documentation",
+                        Type:     "page",
+                        SpaceKey: "DEMO",
+                        Version:  2,
+                        Updated:  time.Now().Add(-12 * time.Hour),
+                },
+        }
+
+        return &amp;types.PageListResponse{
+                Pages:      pages,
+                Total:      2,
+                StartAt:    0,
+                MaxResults: 25,
+        }, nil
+}</span>
+
+// ListSpaces lists Confluence spaces
+func (c *MockConfluenceClient) ListSpaces(ctx context.Context, opts *types.SpaceListOptions) (*types.SpaceListResponse, error) <span class="cov0" title="0">{
+        // Mock implementation for demonstration
+        spaces := []types.Space{
+                {
+                        ID:          "1",
+                        Key:         "DEMO",
+                        Name:        "Demo Space",
+                        Type:        "global",
+                        Description: "Demonstration space for testing",
+                },
+                {
+                        ID:          "2",
+                        Key:         "DEV",
+                        Name:        "Development",
+                        Type:        "global",
+                        Description: "Development documentation",
+                },
+        }
+
+        return &amp;types.SpaceListResponse{
+                Spaces:     spaces,
+                Total:      2,
+                StartAt:    0,
+                MaxResults: 25,
+        }, nil
+}</span>
+
+</pre>
+		
+		<pre class="file" id="file14" style="display: none">package jira
+
+import (
+        "atlassian-cli/internal/cache"
+        "atlassian-cli/internal/types"
+        "context"
+        "fmt"
+        "strings"
+        "time"
+
+        "github.com/ctreminiom/go-atlassian/jira/v3"
+        "github.com/ctreminiom/go-atlassian/pkg/infra/models"
+)
+
+// JiraClient defines the interface for JIRA operations
+type JiraClient interface {
+        CreateIssue(ctx context.Context, req *types.CreateIssueRequest) (*types.Issue, error)
+        GetIssue(ctx context.Context, key string) (*types.Issue, error)
+        UpdateIssue(ctx context.Context, key string, req *types.UpdateIssueRequest) (*types.Issue, error)
+        ListIssues(ctx context.Context, opts *types.IssueListOptions) (*types.IssueListResponse, error)
+        ListProjects(ctx context.Context, opts *types.ProjectListOptions) (*types.ProjectListResponse, error)
+        GetProject(ctx context.Context, key string) (*types.Project, error)
+}
+
+// AtlassianJiraClient implements JiraClient using the go-atlassian library
+type AtlassianJiraClient struct {
+        client *v3.Client
+}
+
+// NewAtlassianJiraClient creates a new JIRA client
+func NewAtlassianJiraClient(baseURL, email, token string) (*AtlassianJiraClient, error) <span class="cov0" title="0">{
+        if baseURL == "" </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("base URL is required")
+        }</span>
+        <span class="cov0" title="0">if email == "" </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("email is required")
+        }</span>
+        <span class="cov0" title="0">if token == "" </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("token is required")
+        }</span>
+
+        // Create the client instance
+        <span class="cov0" title="0">instance, err := v3.New(nil, baseURL)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to create JIRA client: %w", err)
+        }</span>
+
+        // Set authentication
+        <span class="cov0" title="0">instance.Auth.SetBasicAuth(email, token)
+
+        return &amp;AtlassianJiraClient{
+                client: instance,
+        }, nil</span>
+}
+
+// CreateIssue creates a new JIRA issue
+func (c *AtlassianJiraClient) CreateIssue(ctx context.Context, req *types.CreateIssueRequest) (*types.Issue, error) <span class="cov0" title="0">{
+        if req == nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("create issue request cannot be nil")
+        }</span>
+
+        // Build the issue creation payload
+        <span class="cov0" title="0">fields := &amp;models.IssueFieldsScheme{
+                Summary: req.Summary,
+                Project: &amp;models.ProjectScheme{
+                        Key: req.Project,
+                },
+                IssueType: &amp;models.IssueTypeScheme{
+                        Name: req.IssueType,
+                },
+        }
+
+        // Set optional fields
+        if req.Priority != "" </span><span class="cov0" title="0">{
+                fields.Priority = &amp;models.PriorityScheme{
+                        Name: req.Priority,
+                }
+        }</span>
+
+        <span class="cov0" title="0">if req.Assignee != "" </span><span class="cov0" title="0">{
+                fields.Assignee = &amp;models.UserScheme{
+                        Name: req.Assignee,
+                }
+        }</span>
+
+        <span class="cov0" title="0">if len(req.Labels) &gt; 0 </span><span class="cov0" title="0">{
+                fields.Labels = req.Labels
+        }</span>
+
+        <span class="cov0" title="0">if len(req.Components) &gt; 0 </span><span class="cov0" title="0">{
+                components := make([]*models.ComponentScheme, len(req.Components))
+                for i, comp := range req.Components </span><span class="cov0" title="0">{
+                        components[i] = &amp;models.ComponentScheme{
+                                Name: comp,
+                        }
+                }</span>
+                <span class="cov0" title="0">fields.Components = components</span>
+        }
+
+        <span class="cov0" title="0">payload := &amp;models.IssueScheme{
+                Fields: fields,
+        }
+
+        // Create the issue
+        result, _, err := c.client.Issue.Create(ctx, payload, nil)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to create issue: %w", err)
+        }</span>
+
+        // Convert the response to our internal type
+        <span class="cov0" title="0">issue := &amp;types.Issue{
+                ID:      result.ID,
+                Key:     result.Key,
+                Project: req.Project,
+                Summary: req.Summary,
+        }
+
+        return issue, nil</span>
+}
+
+// GetIssue retrieves a JIRA issue by key
+func (c *AtlassianJiraClient) GetIssue(ctx context.Context, key string) (*types.Issue, error) <span class="cov0" title="0">{
+        if key == "" </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("issue key cannot be empty")
+        }</span>
+
+        // Get the issue
+        <span class="cov0" title="0">result, _, err := c.client.Issue.Get(ctx, key, nil, nil)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to get issue %s: %w", key, err)
+        }</span>
+
+        // Convert the response to our internal type
+        <span class="cov0" title="0">issue := convertAtlassianIssue(result)
+        return issue, nil</span>
+}
+
+// UpdateIssue updates an existing JIRA issue
+func (c *AtlassianJiraClient) UpdateIssue(ctx context.Context, key string, req *types.UpdateIssueRequest) (*types.Issue, error) <span class="cov0" title="0">{
+        if key == "" </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("issue key cannot be empty")
+        }</span>
+        <span class="cov0" title="0">if req == nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("update issue request cannot be nil")
+        }</span>
+
+        // Build the fields for the update
+        <span class="cov0" title="0">fields := &amp;models.IssueFieldsScheme{}
+
+        if req.Summary != nil </span><span class="cov0" title="0">{
+                fields.Summary = *req.Summary
+        }</span>
+
+        <span class="cov0" title="0">if req.Priority != nil </span><span class="cov0" title="0">{
+                fields.Priority = &amp;models.PriorityScheme{
+                        Name: *req.Priority,
+                }
+        }</span>
+
+        <span class="cov0" title="0">if req.Assignee != nil </span><span class="cov0" title="0">{
+                fields.Assignee = &amp;models.UserScheme{
+                        Name: *req.Assignee,
+                }
+        }</span>
+
+        <span class="cov0" title="0">if req.Labels != nil </span><span class="cov0" title="0">{
+                fields.Labels = *req.Labels
+        }</span>
+
+        <span class="cov0" title="0">if req.Components != nil </span><span class="cov0" title="0">{
+                components := make([]*models.ComponentScheme, len(*req.Components))
+                for i, comp := range *req.Components </span><span class="cov0" title="0">{
+                        components[i] = &amp;models.ComponentScheme{
+                                Name: comp,
+                        }
+                }</span>
+                <span class="cov0" title="0">fields.Components = components</span>
+        }
+
+        <span class="cov0" title="0">payload := &amp;models.IssueScheme{
+                Fields: fields,
+        }
+
+        // Update the issue
+        _, err := c.client.Issue.Update(ctx, key, true, payload, nil, nil)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to update issue %s: %w", key, err)
+        }</span>
+
+        // Handle status transition if needed
+        <span class="cov0" title="0">if req.Status != nil </span><span class="cov0" title="0">{
+                // Note: Status updates require transitions, which is more complex
+                // For now, we'll return an error if status update is attempted
+                return nil, fmt.Errorf("status updates not yet implemented - use transitions")
+        }</span>
+
+        // Fetch and return the updated issue
+        <span class="cov0" title="0">return c.GetIssue(ctx, key)</span>
+}
+
+// ListIssues lists JIRA issues based on the provided options
+func (c *AtlassianJiraClient) ListIssues(ctx context.Context, opts *types.IssueListOptions) (*types.IssueListResponse, error) <span class="cov0" title="0">{
+        if opts == nil </span><span class="cov0" title="0">{
+                opts = &amp;types.IssueListOptions{}
+        }</span>
+
+        // Build JQL query
+        <span class="cov0" title="0">jql := opts.JQL
+        if jql == "" </span><span class="cov0" title="0">{
+                jql = buildJQLFromOptions(opts)
+        }</span>
+
+        // Set default values
+        <span class="cov0" title="0">maxResults := opts.MaxResults
+        if maxResults &lt;= 0 </span><span class="cov0" title="0">{
+                maxResults = 50
+        }</span>
+
+        <span class="cov0" title="0">startAt := opts.StartAt
+        if startAt &lt; 0 </span><span class="cov0" title="0">{
+                startAt = 0
+        }</span>
+
+        // Search for issues
+        <span class="cov0" title="0">result, _, err := c.client.Issue.Search.Get(ctx, jql, nil, nil, maxResults, startAt, "")
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to list issues: %w", err)
+        }</span>
+
+        // Convert the response to our internal type
+        <span class="cov0" title="0">issues := make([]types.Issue, len(result.Issues))
+        for i, atlassianIssue := range result.Issues </span><span class="cov0" title="0">{
+                issues[i] = *convertAtlassianIssue(atlassianIssue)
+        }</span>
+
+        <span class="cov0" title="0">response := &amp;types.IssueListResponse{
+                Issues:     issues,
+                Total:      result.Total,
+                StartAt:    result.StartAt,
+                MaxResults: result.MaxResults,
+        }
+
+        return response, nil</span>
+}
+
+// convertAtlassianIssue converts a go-atlassian issue to our internal type
+func convertAtlassianIssue(issue *models.IssueScheme) *types.Issue <span class="cov0" title="0">{
+        result := &amp;types.Issue{
+                ID:  issue.ID,
+                Key: issue.Key,
+        }
+
+        if issue.Fields != nil </span><span class="cov0" title="0">{
+                result.Summary = issue.Fields.Summary
+
+                if issue.Fields.Status != nil </span><span class="cov0" title="0">{
+                        result.Status = issue.Fields.Status.Name
+                }</span>
+
+                <span class="cov0" title="0">if issue.Fields.IssueType != nil </span><span class="cov0" title="0">{
+                        result.IssueType = issue.Fields.IssueType.Name
+                }</span>
+
+                <span class="cov0" title="0">if issue.Fields.Priority != nil </span><span class="cov0" title="0">{
+                        result.Priority = issue.Fields.Priority.Name
+                }</span>
+
+                <span class="cov0" title="0">if issue.Fields.Assignee != nil </span><span class="cov0" title="0">{
+                        result.Assignee = issue.Fields.Assignee.DisplayName
+                }</span>
+
+                <span class="cov0" title="0">if issue.Fields.Reporter != nil </span><span class="cov0" title="0">{
+                        result.Reporter = issue.Fields.Reporter.DisplayName
+                }</span>
+
+                <span class="cov0" title="0">if issue.Fields.Project != nil </span><span class="cov0" title="0">{
+                        result.Project = issue.Fields.Project.Key
+                }</span>
+
+                <span class="cov0" title="0">if issue.Fields.Created != "" </span><span class="cov0" title="0">{
+                        if created, err := time.Parse(time.RFC3339, issue.Fields.Created); err == nil </span><span class="cov0" title="0">{
+                                result.Created = created
+                        }</span>
+                }
+
+                <span class="cov0" title="0">if issue.Fields.Updated != "" </span><span class="cov0" title="0">{
+                        if updated, err := time.Parse(time.RFC3339, issue.Fields.Updated); err == nil </span><span class="cov0" title="0">{
+                                result.Updated = updated
+                        }</span>
+                }
+
+                <span class="cov0" title="0">if len(issue.Fields.Labels) &gt; 0 </span><span class="cov0" title="0">{
+                        result.Labels = issue.Fields.Labels
+                }</span>
+
+                <span class="cov0" title="0">if len(issue.Fields.Components) &gt; 0 </span><span class="cov0" title="0">{
+                        components := make([]string, len(issue.Fields.Components))
+                        for i, comp := range issue.Fields.Components </span><span class="cov0" title="0">{
+                                components[i] = comp.Name
+                        }</span>
+                        <span class="cov0" title="0">result.Components = components</span>
+                }
+        }
+
+        <span class="cov0" title="0">return result</span>
+}
+
+// buildJQLFromOptions builds a JQL query from the list options
+func buildJQLFromOptions(opts *types.IssueListOptions) string <span class="cov0" title="0">{
+        var clauses []string
+
+        if opts.Project != "" </span><span class="cov0" title="0">{
+                clauses = append(clauses, fmt.Sprintf("project = %s", opts.Project))
+        }</span>
+
+        <span class="cov0" title="0">if len(opts.Status) &gt; 0 </span><span class="cov0" title="0">{
+                statuses := make([]string, len(opts.Status))
+                for i, status := range opts.Status </span><span class="cov0" title="0">{
+                        statuses[i] = fmt.Sprintf(`"%s"`, status)
+                }</span>
+                <span class="cov0" title="0">clauses = append(clauses, fmt.Sprintf("status IN (%s)", strings.Join(statuses, ",")))</span>
+        }
+
+        <span class="cov0" title="0">if len(opts.IssueType) &gt; 0 </span><span class="cov0" title="0">{
+                types := make([]string, len(opts.IssueType))
+                for i, issueType := range opts.IssueType </span><span class="cov0" title="0">{
+                        types[i] = fmt.Sprintf(`"%s"`, issueType)
+                }</span>
+                <span class="cov0" title="0">clauses = append(clauses, fmt.Sprintf("issuetype IN (%s)", strings.Join(types, ",")))</span>
+        }
+
+        <span class="cov0" title="0">if opts.Assignee != "" </span><span class="cov0" title="0">{
+                clauses = append(clauses, fmt.Sprintf("assignee = %s", opts.Assignee))
+        }</span>
+
+        <span class="cov0" title="0">if len(clauses) == 0 </span><span class="cov0" title="0">{
+                return "ORDER BY created DESC"
+        }</span>
+
+        <span class="cov0" title="0">return strings.Join(clauses, " AND ") + " ORDER BY created DESC"</span>
+}
+
+// ListProjects lists JIRA projects with caching
+func (c *AtlassianJiraClient) ListProjects(ctx context.Context, opts *types.ProjectListOptions) (*types.ProjectListResponse, error) <span class="cov0" title="0">{
+        // Try cache first
+        cacheKey := "projects_list"
+        var cached types.ProjectListResponse
+        if cache, err := cache.NewCache(); err == nil </span><span class="cov0" title="0">{
+                if found, _ := cache.Get(cacheKey, &amp;cached); found </span><span class="cov0" title="0">{
+                        return &amp;cached, nil
+                }</span>
+        }
+
+        // Mock implementation for demonstration
+        <span class="cov0" title="0">projects := []types.Project{
+                {
+                        ID:          "10000",
+                        Key:         "DEMO",
+                        Name:        "Demo Project",
+                        Description: "Demonstration project for testing",
+                        Lead:        "admin",
+                        ProjectType: "software",
+                },
+                {
+                        ID:          "10001",
+                        Key:         "DEV",
+                        Name:        "Development",
+                        Description: "Development project",
+                        Lead:        "dev-lead",
+                        ProjectType: "software",
+                },
+        }
+
+        response := &amp;types.ProjectListResponse{
+                Projects:   projects,
+                Total:      2,
+                StartAt:    0,
+                MaxResults: 50,
+        }
+
+        // Cache the result
+        if cache, err := cache.NewCache(); err == nil </span><span class="cov0" title="0">{
+                cache.Set(cacheKey, response, 5*time.Minute)
+        }</span>
+
+        <span class="cov0" title="0">return response, nil</span>
+}
+
+// GetProject retrieves a JIRA project by key
+func (c *AtlassianJiraClient) GetProject(ctx context.Context, key string) (*types.Project, error) <span class="cov0" title="0">{
+        // Mock implementation for demonstration
+        return &amp;types.Project{
+                ID:          "10000",
+                Key:         key,
+                Name:        "Demo Project",
+                Description: "Demonstration project for testing",
+                Lead:        "admin",
+                ProjectType: "software",
+        }, nil
+}</pre>
+		
+		<pre class="file" id="file15" style="display: none">package retry
+
+import (
+        "context"
+        "fmt"
+        "math"
+        "math/rand"
+        "time"
+)
+
+// Config defines retry configuration
+type Config struct {
+        MaxAttempts int
+        BaseDelay   time.Duration
+        MaxDelay    time.Duration
+}
+
+// DefaultConfig returns sensible retry defaults
+func DefaultConfig() Config <span class="cov0" title="0">{
+        return Config{
+                MaxAttempts: 3,
+                BaseDelay:   100 * time.Millisecond,
+                MaxDelay:    5 * time.Second,
+        }
+}</span>
+
+// Do executes a function with exponential backoff retry
+func Do(ctx context.Context, config Config, fn func() error) error <span class="cov0" title="0">{
+        var lastErr error
+        
+        for attempt := 0; attempt &lt; config.MaxAttempts; attempt++ </span><span class="cov0" title="0">{
+                if attempt &gt; 0 </span><span class="cov0" title="0">{
+                        delay := calculateDelay(attempt, config.BaseDelay, config.MaxDelay)
+                        select </span>{
+                        case &lt;-time.After(delay):<span class="cov0" title="0"></span>
+                        case &lt;-ctx.Done():<span class="cov0" title="0">
+                                return ctx.Err()</span>
+                        }
+                }
+
+                <span class="cov0" title="0">if err := fn(); err != nil </span><span class="cov0" title="0">{
+                        lastErr = err
+                        if !isRetryable(err) </span><span class="cov0" title="0">{
+                                return err
+                        }</span>
+                        <span class="cov0" title="0">continue</span>
+                }
+                
+                <span class="cov0" title="0">return nil</span>
+        }
+        
+        <span class="cov0" title="0">return fmt.Errorf("max retry attempts exceeded: %w", lastErr)</span>
+}
+
+// calculateDelay computes exponential backoff with jitter
+func calculateDelay(attempt int, baseDelay, maxDelay time.Duration) time.Duration <span class="cov0" title="0">{
+        delay := time.Duration(float64(baseDelay) * math.Pow(2, float64(attempt-1)))
+        if delay &gt; maxDelay </span><span class="cov0" title="0">{
+                delay = maxDelay
+        }</span>
+        
+        // Add jitter (±25%)
+        <span class="cov0" title="0">jitter := time.Duration(rand.Float64() * float64(delay) * 0.5)
+        return delay + jitter - time.Duration(float64(delay)*0.25)</span>
+}
+
+// isRetryable determines if an error should trigger a retry
+func isRetryable(err error) bool <span class="cov0" title="0">{
+        // Simple heuristic - in real implementation, check for specific error types
+        errStr := err.Error()
+        return contains(errStr, "timeout") || 
+                   contains(errStr, "connection") ||
+                   contains(errStr, "temporary")
+}</span>
+
+func contains(s, substr string) bool <span class="cov0" title="0">{
+        return len(s) &gt;= len(substr) &amp;&amp; s[:len(substr)] == substr
+}</pre>
+		
+		<pre class="file" id="file16" style="display: none">package main
+
+import (
+        "os"
+
+        "atlassian-cli/cmd"
+)
+
+// version will be set by build process
+var version = "dev"
+
+func main() <span class="cov0" title="0">{
+        if err := cmd.Execute(); err != nil </span><span class="cov0" title="0">{
+                os.Exit(1)
+        }</span>
+}</pre>
+		
+		</div>
+	</body>
+	<script>
+	(function() {
+		var files = document.getElementById('files');
+		var visible;
+		files.addEventListener('change', onChange, false);
+		function select(part) {
+			if (visible)
+				visible.style.display = 'none';
+			visible = document.getElementById(part);
+			if (!visible)
+				return;
+			files.value = part;
+			visible.style.display = 'block';
+			location.hash = part;
+		}
+		function onChange() {
+			select(files.value);
+			window.scrollTo(0, 0);
+		}
+		if (location.hash != "") {
+			select(location.hash.substr(1));
+		}
+		if (!visible) {
+			select("file0");
+		}
+	})();
+	</script>
+</html>
