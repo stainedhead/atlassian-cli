@@ -37,6 +37,10 @@ bin/
 test/
 atlassian-cli
 
+# specs where we outliine and plan the work
+/specs/
+/specs/archive/
+
 # Build artifacts
 dist/
 build/

@@ -15,10 +15,12 @@ A modern command-line interface for JIRA and Confluence that transforms REST API
 - Profile management for multiple Atlassian instances
 
 ### 🔒 **Secure Authentication**
-- API token-based authentication
-- Secure credential storage using OS keychain
+- API token-based authentication with validation
+- Secure credential storage using OS keychain (with encrypted file fallback)
+- Token validation before storage to catch errors early
 - Multiple instance support
 - Interactive authentication flow
+- Automatic migration from plaintext config storage
 
 ### 📊 **Multi-Format Output**
 - JSON for scripting and automation
@@ -27,10 +29,11 @@ A modern command-line interface for JIRA and Confluence that transforms REST API
 - Customizable output formatting
 
 ### ⚡ **Developer-Focused Workflows**
-- **JIRA**: Issue management, project operations, agile workflows
-- **Confluence**: Page and space management, content operations
+- **JIRA**: Issue management, project operations, agile workflows, transitions
+- **Confluence**: Page and space management, content operations, search
 - **Smart Defaults**: Eliminate repetitive parameter specification
 - **Comprehensive Testing**: 90%+ test coverage with TDD approach
+- **Production-Ready**: Enterprise-grade reliability with proper error handling and retry logic
 
 ## Quick Start
 

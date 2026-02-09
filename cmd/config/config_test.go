@@ -10,10 +10,10 @@ import (
 
 func TestNewConfigCmd(t *testing.T) {
 	cmd := NewConfigCmd()
-	
+
 	assert.NotNil(t, cmd)
 	assert.Equal(t, "config", cmd.Use)
-	assert.Contains(t, cmd.Short, "Manage configuration")
+	assert.Contains(t, cmd.Short, "Configuration management")
 	assert.True(t, len(cmd.Commands()) > 0)
 }
 
@@ -28,19 +28,19 @@ func TestConfigSetCommand(t *testing.T) {
 			name:    "missing arguments",
 			args:    []string{"set"},
 			wantErr: true,
-			errMsg:  "requires exactly 2 args",
+			errMsg:  "accepts 2 arg(s), received",
 		},
 		{
 			name:    "missing value",
 			args:    []string{"set", "default_jira_project"},
 			wantErr: true,
-			errMsg:  "requires exactly 2 args",
+			errMsg:  "accepts 2 arg(s), received",
 		},
 		{
 			name:    "too many arguments",
 			args:    []string{"set", "key", "value", "extra"},
 			wantErr: true,
-			errMsg:  "requires exactly 2 args",
+			errMsg:  "accepts 2 arg(s), received",
 		},
 	}
 
@@ -48,13 +48,13 @@ func TestConfigSetCommand(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			cmd := NewConfigCmd()
 			cmd.SetArgs(tt.args)
-			
+
 			var buf bytes.Buffer
 			cmd.SetOut(&buf)
 			cmd.SetErr(&buf)
-			
+
 			err := cmd.Execute()
-			
+
 			if tt.wantErr {
 				assert.Error(t, err)
 				if tt.errMsg != "" {
@@ -78,13 +78,13 @@ func TestConfigGetCommand(t *testing.T) {
 			name:    "missing key",
 			args:    []string{"get"},
 			wantErr: true,
-			errMsg:  "requires exactly 1 arg",
+			errMsg:  "accepts 1 arg(s), received",
 		},
 		{
 			name:    "too many arguments",
 			args:    []string{"get", "key1", "key2"},
 			wantErr: true,
-			errMsg:  "requires exactly 1 arg",
+			errMsg:  "accepts 1 arg(s), received",
 		},
 	}
 
@@ -92,13 +92,13 @@ func TestConfigGetCommand(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			cmd := NewConfigCmd()
 			cmd.SetArgs(tt.args)
-			
+
 			var buf bytes.Buffer
 			cmd.SetOut(&buf)
 			cmd.SetErr(&buf)
-			
+
 			err := cmd.Execute()
-			
+
 			if tt.wantErr {
 				assert.Error(t, err)
 				if tt.errMsg != "" {
@@ -113,7 +113,7 @@ func TestConfigGetCommand(t *testing.T) {
 
 func TestConfigListCommand(t *testing.T) {
 	cmd := NewConfigCmd()
-	
+
 	// Test that list command exists and has correct structure
 	var listCmd *cobra.Command
 	for _, subCmd := range cmd.Commands() {
@@ -122,7 +122,7 @@ func TestConfigListCommand(t *testing.T) {
 			break
 		}
 	}
-	
+
 	assert.NotNil(t, listCmd)
 	assert.Equal(t, "list", listCmd.Use)
 	assert.Contains(t, listCmd.Short, "List all configuration")
@@ -130,15 +130,17 @@ func TestConfigListCommand(t *testing.T) {
 
 func TestConfigCommandStructure(t *testing.T) {
 	cmd := NewConfigCmd()
-	
+
 	// Verify all expected subcommands exist
 	expectedCommands := []string{"set", "get", "list"}
 	actualCommands := make(map[string]bool)
-	
+
 	for _, subCmd := range cmd.Commands() {
-		actualCommands[subCmd.Use] = true
+		// Extract the command name from the Use field (e.g., "set <key> <value>" -> "set")
+		cmdName := subCmd.Name()
+		actualCommands[cmdName] = true
 	}
-	
+
 	for _, expected := range expectedCommands {
 		assert.True(t, actualCommands[expected], "Missing command: %s", expected)
 	}
@@ -155,7 +157,7 @@ func TestConfigValidKeys(t *testing.T) {
 		"confluence_timeout",
 		"no_color",
 	}
-	
+
 	// This test verifies that our documentation matches expected configuration keys
 	// In a real implementation, this would test against the actual validation logic
 	assert.True(t, len(validKeys) > 0, "Should have valid configuration keys defined")

@@ -68,7 +68,6 @@ output: "table"
 			},
 			expectError: false,
 		},
-
 	}
 
 	for _, tt := range tests {
@@ -100,7 +99,7 @@ output: "table"
 			assert.Equal(t, tt.expectedConfig.DefaultConfluenceSpace, config.DefaultConfluenceSpace)
 			assert.Equal(t, tt.expectedConfig.Output, config.Output)
 			assert.Equal(t, tt.expectedConfig.Debug, config.Debug)
-			
+
 			if tt.expectedConfig.Timeout != 0 {
 				assert.Equal(t, tt.expectedConfig.Timeout, config.Timeout)
 			}

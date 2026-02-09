@@ -71,3 +71,18 @@ type Transition struct {
 		Name string `json:"name"`
 	} `json:"to"`
 }
+
+// IssueSearchOptions represents options for searching issues with JQL
+type IssueSearchOptions struct {
+	JQL        string `json:"jql"`
+	MaxResults int    `json:"maxResults"`
+	StartAt    int    `json:"startAt"`
+}
+
+// IssueSearchResponse represents the response from searching issues
+type IssueSearchResponse struct {
+	Issues     []Issue `json:"issues"`
+	Total      int     `json:"total"`
+	StartAt    int     `json:"startAt"`
+	MaxResults int     `json:"maxResults"`
+}

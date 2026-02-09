@@ -18,6 +18,7 @@ type JiraClient interface {
 	GetIssue(ctx context.Context, key string) (*types.Issue, error)
 	UpdateIssue(ctx context.Context, key string, req *types.UpdateIssueRequest) (*types.Issue, error)
 	ListIssues(ctx context.Context, opts *types.IssueListOptions) (*types.IssueListResponse, error)
+	SearchIssues(ctx context.Context, opts *types.IssueSearchOptions) (*types.IssueSearchResponse, error)
 	ListProjects(ctx context.Context, opts *types.ProjectListOptions) (*types.ProjectListResponse, error)
 	GetProject(ctx context.Context, key string) (*types.Project, error)
 	GetTransitions(ctx context.Context, issueKey string) ([]types.Transition, error)
@@ -262,6 +263,49 @@ func (c *AtlassianJiraClient) ListIssues(ctx context.Context, opts *types.IssueL
 	}
 
 	response := &types.IssueListResponse{
+		Issues:     issues,
+		Total:      result.Total,
+		StartAt:    result.StartAt,
+		MaxResults: result.MaxResults,
+	}
+
+	return response, nil
+}
+
+// SearchIssues searches JIRA issues using JQL
+func (c *AtlassianJiraClient) SearchIssues(ctx context.Context, opts *types.IssueSearchOptions) (*types.IssueSearchResponse, error) {
+	if opts == nil {
+		return nil, fmt.Errorf("search options cannot be nil")
+	}
+
+	if opts.JQL == "" {
+		return nil, fmt.Errorf("JQL query is required")
+	}
+
+	// Set default values
+	maxResults := opts.MaxResults
+	if maxResults <= 0 {
+		maxResults = 50
+	}
+
+	startAt := opts.StartAt
+	if startAt < 0 {
+		startAt = 0
+	}
+
+	// Search for issues
+	result, _, err := c.client.Issue.Search.Get(ctx, opts.JQL, nil, nil, maxResults, startAt, "")
+	if err != nil {
+		return nil, fmt.Errorf("failed to search issues: %w", err)
+	}
+
+	// Convert the response to our internal type
+	issues := make([]types.Issue, len(result.Issues))
+	for i, atlassianIssue := range result.Issues {
+		issues[i] = *convertAtlassianIssue(atlassianIssue)
+	}
+
+	response := &types.IssueSearchResponse{
 		Issues:     issues,
 		Total:      result.Total,
 		StartAt:    result.StartAt,

@@ -5,13 +5,14 @@ import (
 	"testing"
 
 	"atlassian-cli/internal/auth"
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestNewIssueSearchCmd(t *testing.T) {
 	tokenManager := auth.NewMemoryTokenManager()
 	cmd := NewIssueCmd(tokenManager)
-	
+
 	// Find search subcommand
 	var searchCmd *cobra.Command
 	for _, subCmd := range cmd.Commands() {
@@ -20,7 +21,7 @@ func TestNewIssueSearchCmd(t *testing.T) {
 			break
 		}
 	}
-	
+
 	assert.NotNil(t, searchCmd, "Issue search command should exist")
 	assert.Equal(t, "search", searchCmd.Use)
 	assert.Contains(t, searchCmd.Short, "Search issues")
@@ -29,7 +30,7 @@ func TestNewIssueSearchCmd(t *testing.T) {
 func TestIssueSearchFlags(t *testing.T) {
 	tokenManager := auth.NewMemoryTokenManager()
 	cmd := NewIssueCmd(tokenManager)
-	
+
 	// Find search subcommand
 	var searchCmd *cobra.Command
 	for _, subCmd := range cmd.Commands() {
@@ -38,9 +39,9 @@ func TestIssueSearchFlags(t *testing.T) {
 			break
 		}
 	}
-	
+
 	assert.NotNil(t, searchCmd)
-	
+
 	// Check required flags exist
 	flags := searchCmd.Flags()
 	assert.NotNil(t, flags.Lookup("project"), "Should have --project flag")
@@ -75,13 +76,13 @@ func TestIssueSearchCommand(t *testing.T) {
 			tokenManager := auth.NewMemoryTokenManager()
 			cmd := NewIssueCmd(tokenManager)
 			cmd.SetArgs(tt.args)
-			
+
 			var buf bytes.Buffer
 			cmd.SetOut(&buf)
 			cmd.SetErr(&buf)
-			
+
 			err := cmd.Execute()
-			
+
 			if tt.wantErr {
 				assert.Error(t, err)
 				if tt.errMsg != "" {

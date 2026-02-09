@@ -53,7 +53,7 @@ func (c *Cache) Set(key string, data interface{}, ttl time.Duration) error {
 // Get retrieves data from cache if not expired
 func (c *Cache) Get(key string, target interface{}) (bool, error) {
 	filePath := filepath.Join(c.dir, key+".json")
-	
+
 	data, err := os.ReadFile(filePath)
 	if os.IsNotExist(err) {
 		return false, nil

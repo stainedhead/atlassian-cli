@@ -16,12 +16,12 @@ import (
 // newSearchCmd creates the page search command
 func newSearchCmd(tokenManager auth.TokenManager) *cobra.Command {
 	var (
-		space     string
-		cql       string
-		text      string
-		title     string
-		pageType  string
-		limit     int
+		space    string
+		cql      string
+		text     string
+		title    string
+		pageType string
+		limit    int
 	)
 
 	cmd := &cobra.Command{
@@ -80,8 +80,16 @@ Examples:
 				return fmt.Errorf("failed to search pages: %w", err)
 			}
 
+			// Convert SearchResponse to ListResponse for output
+			listResponse := &types.PageListResponse{
+				Pages:      response.Pages,
+				Total:      response.Total,
+				StartAt:    response.StartAt,
+				MaxResults: response.MaxResults,
+			}
+
 			// Output result
-			return outputPageList(cmd, response)
+			return outputPageList(cmd, listResponse)
 		},
 	}
 
@@ -137,7 +145,7 @@ func buildCQLFromFilters(cmd *cobra.Command, space, text, title, pageType string
 
 	// Join conditions with AND
 	cql := strings.Join(conditions, " AND ")
-	
+
 	// Add default ordering
 	cql += " ORDER BY lastModified DESC"
 

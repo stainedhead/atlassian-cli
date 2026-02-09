@@ -19,7 +19,7 @@ func NewFormatter(format string) *Formatter {
 	if format == "" {
 		format = "table"
 	}
-	
+
 	// Validate format
 	switch format {
 	case "json", "table", "yaml":
@@ -27,7 +27,7 @@ func NewFormatter(format string) *Formatter {
 	default:
 		format = "table" // Default fallback
 	}
-	
+
 	return &Formatter{
 		format: format,
 	}
@@ -89,7 +89,7 @@ func (f *Formatter) formatTable(data interface{}) (string, error) {
 // formatMapAsTable formats a single map as a key-value table
 func (f *Formatter) formatMapAsTable(data map[string]interface{}) string {
 	var buf strings.Builder
-	
+
 	// Find max key length for alignment
 	maxKeyLen := 0
 	for key := range data {
@@ -97,12 +97,12 @@ func (f *Formatter) formatMapAsTable(data map[string]interface{}) string {
 			maxKeyLen = len(key)
 		}
 	}
-	
+
 	// Format as key-value pairs
 	for key, value := range data {
 		buf.WriteString(fmt.Sprintf("%-*s: %v\n", maxKeyLen, key, value))
 	}
-	
+
 	return buf.String()
 }
 
@@ -111,7 +111,7 @@ func (f *Formatter) formatSliceAsTable(data []interface{}) string {
 	if len(data) == 0 {
 		return "No data\n"
 	}
-	
+
 	// Check if all items are maps
 	allMaps := true
 	for _, item := range data {
@@ -120,7 +120,7 @@ func (f *Formatter) formatSliceAsTable(data []interface{}) string {
 			break
 		}
 	}
-	
+
 	if allMaps {
 		// Convert to []map[string]interface{} and format
 		mapSlice := make([]map[string]interface{}, len(data))
@@ -129,7 +129,7 @@ func (f *Formatter) formatSliceAsTable(data []interface{}) string {
 		}
 		return f.formatMapSliceAsTable(mapSlice)
 	}
-	
+
 	// Format as simple list
 	var buf strings.Builder
 	for i, item := range data {
@@ -143,7 +143,7 @@ func (f *Formatter) formatMapSliceAsTable(data []map[string]interface{}) string 
 	if len(data) == 0 {
 		return "No data\n"
 	}
-	
+
 	// Collect all unique keys
 	keySet := make(map[string]bool)
 	for _, item := range data {
@@ -151,15 +151,15 @@ func (f *Formatter) formatMapSliceAsTable(data []map[string]interface{}) string 
 			keySet[key] = true
 		}
 	}
-	
+
 	// Convert to sorted slice
 	var headers []string
 	for key := range keySet {
 		headers = append(headers, key)
 	}
-	
+
 	var buf strings.Builder
-	
+
 	// Write header
 	for i, header := range headers {
 		if i > 0 {
@@ -168,7 +168,7 @@ func (f *Formatter) formatMapSliceAsTable(data []map[string]interface{}) string 
 		buf.WriteString(strings.ToUpper(header))
 	}
 	buf.WriteString("\n")
-	
+
 	// Write separator
 	for i, header := range headers {
 		if i > 0 {
@@ -177,7 +177,7 @@ func (f *Formatter) formatMapSliceAsTable(data []map[string]interface{}) string 
 		buf.WriteString(strings.Repeat("-", len(header)))
 	}
 	buf.WriteString("\n")
-	
+
 	// Write rows
 	for _, item := range data {
 		for i, header := range headers {
@@ -192,7 +192,7 @@ func (f *Formatter) formatMapSliceAsTable(data []map[string]interface{}) string 
 		}
 		buf.WriteString("\n")
 	}
-	
+
 	return buf.String()
 }
 
@@ -202,7 +202,7 @@ func (f *Formatter) PrintToStdout(data interface{}) error {
 	if err != nil {
 		return err
 	}
-	
+
 	fmt.Fprint(os.Stdout, output)
 	return nil
 }

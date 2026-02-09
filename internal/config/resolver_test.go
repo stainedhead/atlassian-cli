@@ -5,6 +5,8 @@ import (
 
 	"atlassian-cli/internal/types"
 
+	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -60,7 +62,20 @@ func TestResolveProject(t *testing.T) {
 				t.Setenv("ATLASSIAN_DEFAULT_JIRA_PROJECT", tt.envVar)
 			}
 
-			result, err := ResolveProject(tt.flagValue, tt.config)
+			// Create a mock cobra command with flag
+			cmd := &cobra.Command{Use: "test"}
+			cmd.Flags().String("project", tt.flagValue, "test flag")
+			if tt.flagValue != "" {
+				cmd.Flags().Set("project", tt.flagValue)
+			}
+
+			// Set up viper with config values
+			if tt.config != nil && tt.config.DefaultJiraProject != "" {
+				viper.Set("default_jira_project", tt.config.DefaultJiraProject)
+				defer viper.Set("default_jira_project", "")
+			}
+
+			result, err := ResolveProject(cmd)
 
 			if tt.expectError {
 				assert.Error(t, err)
@@ -125,7 +140,20 @@ func TestResolveSpace(t *testing.T) {
 				t.Setenv("ATLASSIAN_DEFAULT_CONFLUENCE_SPACE", tt.envVar)
 			}
 
-			result, err := ResolveSpace(tt.flagValue, tt.config)
+			// Create a mock cobra command with flag
+			cmd := &cobra.Command{Use: "test"}
+			cmd.Flags().String("space", tt.flagValue, "test flag")
+			if tt.flagValue != "" {
+				cmd.Flags().Set("space", tt.flagValue)
+			}
+
+			// Set up viper with config values
+			if tt.config != nil && tt.config.DefaultConfluenceSpace != "" {
+				viper.Set("default_confluence_space", tt.config.DefaultConfluenceSpace)
+				defer viper.Set("default_confluence_space", "")
+			}
+
+			result, err := ResolveSpace(cmd)
 
 			if tt.expectError {
 				assert.Error(t, err)

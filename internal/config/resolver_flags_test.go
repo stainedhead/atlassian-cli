@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -58,9 +59,10 @@ func TestResolveProjectWithCommandFlag(t *testing.T) {
 				defer os.Unsetenv("ATLASSIAN_DEFAULT_JIRA_PROJECT")
 			}
 
-			// Setup config (would be mocked in real implementation)
+			// Setup config
 			if tt.configValue != "" {
-				// This would use viper in real implementation
+				viper.Set("default_jira_project", tt.configValue)
+				defer viper.Set("default_jira_project", "")
 			}
 
 			got, err := ResolveProject(cmd)

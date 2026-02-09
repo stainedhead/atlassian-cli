@@ -68,3 +68,18 @@ type SpaceListResponse struct {
 	StartAt    int     `json:"startAt"`
 	MaxResults int     `json:"maxResults"`
 }
+
+// PageSearchOptions represents options for searching pages with CQL
+type PageSearchOptions struct {
+	CQL        string `json:"cql"`
+	MaxResults int    `json:"maxResults"`
+	StartAt    int    `json:"startAt"`
+}
+
+// PageSearchResponse represents the response from searching pages
+type PageSearchResponse struct {
+	Pages      []Page `json:"pages"`
+	Total      int    `json:"total"`
+	StartAt    int    `json:"startAt"`
+	MaxResults int    `json:"maxResults"`
+}

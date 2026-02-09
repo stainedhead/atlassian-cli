@@ -286,7 +286,7 @@ func newUpdateCmd(tokenManager auth.TokenManager) *cobra.Command {
 
 			// Build update request
 			req := &types.UpdateIssueRequest{}
-			
+
 			if summary != "" {
 				req.Summary = &summary
 			}
@@ -330,7 +330,7 @@ func newUpdateCmd(tokenManager auth.TokenManager) *cobra.Command {
 // outputIssue outputs a single issue in the configured format
 func outputIssue(cmd *cobra.Command, issue *types.Issue) error {
 	format := viper.GetString("output")
-	
+
 	switch format {
 	case "json":
 		encoder := json.NewEncoder(cmd.OutOrStdout())
@@ -357,14 +357,14 @@ func outputIssue(cmd *cobra.Command, issue *types.Issue) error {
 		fmt.Fprintf(cmd.OutOrStdout(), "Created:     %s\n", issue.Created.Format("2006-01-02 15:04:05"))
 		fmt.Fprintf(cmd.OutOrStdout(), "Updated:     %s\n", issue.Updated.Format("2006-01-02 15:04:05"))
 	}
-	
+
 	return nil
 }
 
 // outputIssueList outputs a list of issues in the configured format
 func outputIssueList(cmd *cobra.Command, response *types.IssueListResponse) error {
 	format := viper.GetString("output")
-	
+
 	switch format {
 	case "json":
 		encoder := json.NewEncoder(cmd.OutOrStdout())
@@ -380,7 +380,7 @@ func outputIssueList(cmd *cobra.Command, response *types.IssueListResponse) erro
 		}
 
 		// Print header
-		fmt.Fprintf(cmd.OutOrStdout(), "%-12s %-50s %-15s %-10s %-15s\n", 
+		fmt.Fprintf(cmd.OutOrStdout(), "%-12s %-50s %-15s %-10s %-15s\n",
 			"KEY", "SUMMARY", "STATUS", "TYPE", "ASSIGNEE")
 		fmt.Fprintf(cmd.OutOrStdout(), "%s\n", strings.Repeat("-", 102))
 
@@ -390,17 +390,17 @@ func outputIssueList(cmd *cobra.Command, response *types.IssueListResponse) erro
 			if len(summary) > 47 {
 				summary = summary[:47] + "..."
 			}
-			
+
 			fmt.Fprintf(cmd.OutOrStdout(), "%-12s %-50s %-15s %-10s %-15s\n",
 				issue.Key, summary, issue.Status, issue.IssueType, issue.Assignee)
 		}
 
 		// Print summary
 		fmt.Fprintf(cmd.OutOrStdout(), "\nShowing %d-%d of %d issues\n",
-			response.StartAt+1, 
-			response.StartAt+len(response.Issues), 
+			response.StartAt+1,
+			response.StartAt+len(response.Issues),
 			response.Total)
 	}
-	
+
 	return nil
 }

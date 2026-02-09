@@ -50,10 +50,10 @@ func TestFormatData(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			formatter := NewFormatter(tt.format)
 			result, err := formatter.Format(tt.data)
-			
+
 			assert.NoError(t, err)
 			assert.NotEmpty(t, result)
-			
+
 			// Basic validation based on format
 			switch tt.format {
 			case "json":
@@ -70,26 +70,26 @@ func TestFormatData(t *testing.T) {
 
 func TestFormatError(t *testing.T) {
 	formatter := NewFormatter("json")
-	
+
 	// Test with invalid data that might cause formatting errors
 	invalidData := make(chan int) // channels can't be JSON marshaled
-	
+
 	_, err := formatter.Format(invalidData)
 	assert.Error(t, err)
 }
 
 func TestSupportedFormats(t *testing.T) {
 	supportedFormats := []string{"json", "table", "yaml"}
-	
+
 	for _, format := range supportedFormats {
 		t.Run("format_"+format, func(t *testing.T) {
 			formatter := NewFormatter(format)
 			assert.NotNil(t, formatter)
-			
+
 			// Test with simple data
 			data := map[string]string{"test": "value"}
 			result, err := formatter.Format(data)
-			
+
 			assert.NoError(t, err)
 			assert.NotEmpty(t, result)
 		})

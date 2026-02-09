@@ -62,6 +62,27 @@ func (m *MockJiraClient) GetProject(ctx context.Context, key string) (*types.Pro
 	return args.Get(0).(*types.Project), args.Error(1)
 }
 
+func (m *MockJiraClient) SearchIssues(ctx context.Context, opts *types.IssueSearchOptions) (*types.IssueSearchResponse, error) {
+	args := m.Called(ctx, opts)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*types.IssueSearchResponse), args.Error(1)
+}
+
+func (m *MockJiraClient) GetTransitions(ctx context.Context, issueKey string) ([]types.Transition, error) {
+	args := m.Called(ctx, issueKey)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]types.Transition), args.Error(1)
+}
+
+func (m *MockJiraClient) TransitionIssue(ctx context.Context, issueKey string, transitionID string) error {
+	args := m.Called(ctx, issueKey, transitionID)
+	return args.Error(0)
+}
+
 func TestMockJiraClient(t *testing.T) {
 	// Test that the mock client implements the JiraClient interface
 	var client JiraClient = &MockJiraClient{}

@@ -80,8 +80,16 @@ Examples:
 				return fmt.Errorf("failed to search issues: %w", err)
 			}
 
+			// Convert SearchResponse to ListResponse for output
+			listResponse := &types.IssueListResponse{
+				Issues:     response.Issues,
+				Total:      response.Total,
+				StartAt:    response.StartAt,
+				MaxResults: response.MaxResults,
+			}
+
 			// Output result
-			return outputIssueList(cmd, response)
+			return outputIssueList(cmd, listResponse)
 		},
 	}
 
@@ -138,7 +146,7 @@ func buildJQLFromFilters(cmd *cobra.Command, project, assignee, status, issueTyp
 
 	// Join conditions with AND
 	jql := strings.Join(conditions, " AND ")
-	
+
 	// Add default ordering
 	jql += " ORDER BY created DESC"
 

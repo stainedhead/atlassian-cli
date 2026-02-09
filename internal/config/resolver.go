@@ -54,4 +54,3 @@ func ResolveSpace(cmd *cobra.Command) (string, error) {
 	// 4. No configuration found
 	return "", ErrNoSpaceConfigured
 }
-

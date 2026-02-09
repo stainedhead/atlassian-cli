@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"os"
 
@@ -188,7 +189,7 @@ func createTokenManager() authManager.TokenManager {
 	
 	// Test if keychain is available by attempting a no-op operation
 	// We try to get a non-existent key to see if keychain access works
-	ctx := os.Stdin.Context()
+	ctx := context.Background()
 	_, err := keychainManager.Get(ctx, "test-availability")
 	
 	// If the error is "not found", keychain is working

@@ -168,7 +168,7 @@ func newListCmd() *cobra.Command {
 
 			// Display all settings
 			fmt.Fprintf(cmd.OutOrStdout(), "Configuration settings:\n\n")
-			
+
 			if cfg.APIEndpoint != "" {
 				fmt.Fprintf(cmd.OutOrStdout(), "api_endpoint:             %s\n", cfg.APIEndpoint)
 			}
@@ -181,7 +181,7 @@ func newListCmd() *cobra.Command {
 			if cfg.DefaultConfluenceSpace != "" {
 				fmt.Fprintf(cmd.OutOrStdout(), "default_confluence_space: %s\n", cfg.DefaultConfluenceSpace)
 			}
-			
+
 			fmt.Fprintf(cmd.OutOrStdout(), "output:                   %s\n", cfg.Output)
 			fmt.Fprintf(cmd.OutOrStdout(), "timeout:                  %s\n", cfg.Timeout)
 			fmt.Fprintf(cmd.OutOrStdout(), "debug:                    %t\n", cfg.Debug)

@@ -67,7 +67,7 @@ func TestAuthStatusCommand(t *testing.T) {
 			tt.setupManager(tokenManager)
 
 			cmd := newStatusCmd(tokenManager)
-			
+
 			var output bytes.Buffer
 			cmd.SetOut(&output)
 			cmd.SetErr(&output)
@@ -102,7 +102,7 @@ func TestAuthLogoutCommand(t *testing.T) {
 
 	// Test logout command
 	cmd := newLogoutCmd(tokenManager)
-	
+
 	var output bytes.Buffer
 	cmd.SetOut(&output)
 	cmd.SetErr(&output)

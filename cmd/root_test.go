@@ -37,7 +37,7 @@ func TestRootCommand(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Create a new root command for each test to avoid state pollution
 			cmd := newRootCmd()
-			
+
 			var output bytes.Buffer
 			cmd.SetOut(&output)
 			cmd.SetErr(&output)
@@ -59,11 +59,10 @@ func TestRootCommand(t *testing.T) {
 
 func TestRootCommandFlags(t *testing.T) {
 	cmd := newRootCmd()
-	
+
 	// Test that global flags are properly registered
 	assert.NotNil(t, cmd.PersistentFlags().Lookup("config"))
 	assert.NotNil(t, cmd.PersistentFlags().Lookup("output"))
 	assert.NotNil(t, cmd.PersistentFlags().Lookup("verbose"))
-	assert.NotNil(t, cmd.PersistentFlags().Lookup("jira-project"))
-	assert.NotNil(t, cmd.PersistentFlags().Lookup("confluence-space"))
+	// Global project/space flags were removed - use command-specific flags instead
 }

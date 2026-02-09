@@ -13,6 +13,7 @@ type ConfluenceClient interface {
 	GetPage(ctx context.Context, id string) (*types.Page, error)
 	UpdatePage(ctx context.Context, id string, req *types.UpdatePageRequest) (*types.Page, error)
 	ListPages(ctx context.Context, opts *types.PageListOptions) (*types.PageListResponse, error)
+	SearchPages(ctx context.Context, opts *types.PageSearchOptions) (*types.PageSearchResponse, error)
 	ListSpaces(ctx context.Context, opts *types.SpaceListOptions) (*types.SpaceListResponse, error)
 }
 
@@ -118,6 +119,49 @@ func (c *MockConfluenceClient) ListPages(ctx context.Context, opts *types.PageLi
 	}, nil
 }
 
+// SearchPages searches pages using CQL
+func (c *MockConfluenceClient) SearchPages(ctx context.Context, opts *types.PageSearchOptions) (*types.PageSearchResponse, error) {
+	if opts == nil {
+		return nil, fmt.Errorf("search options cannot be nil")
+	}
+
+	if opts.CQL == "" {
+		return nil, fmt.Errorf("CQL query is required")
+	}
+
+	// Mock implementation for demonstration - returns sample results
+	pages := []types.Page{
+		{
+			ID:       "123456",
+			Title:    "Search Result 1",
+			Type:     "page",
+			SpaceKey: "DEMO",
+			Version:  1,
+			Updated:  time.Now().Add(-24 * time.Hour),
+		},
+		{
+			ID:       "123457",
+			Title:    "Search Result 2",
+			Type:     "page",
+			SpaceKey: "DEMO",
+			Version:  2,
+			Updated:  time.Now().Add(-12 * time.Hour),
+		},
+	}
+
+	maxResults := opts.MaxResults
+	if maxResults <= 0 {
+		maxResults = 25
+	}
+
+	return &types.PageSearchResponse{
+		Pages:      pages,
+		Total:      2,
+		StartAt:    opts.StartAt,
+		MaxResults: maxResults,
+	}, nil
+}
+
 // ListSpaces lists Confluence spaces
 func (c *MockConfluenceClient) ListSpaces(ctx context.Context, opts *types.SpaceListOptions) (*types.SpaceListResponse, error) {
 	// Mock implementation for demonstration
@@ -145,4 +189,3 @@ func (c *MockConfluenceClient) ListSpaces(ctx context.Context, opts *types.Space
 		MaxResults: 25,
 	}, nil
 }
-
