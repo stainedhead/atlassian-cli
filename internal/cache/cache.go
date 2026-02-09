@@ -1,10 +1,13 @@
 package cache
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
 	"time"
 )
 
@@ -14,9 +17,11 @@ type CacheEntry struct {
 	ExpiresAt time.Time   `json:"expires_at"`
 }
 
-// Cache provides intelligent caching with TTL
+// Cache provides intelligent caching with TTL and thread-safe operations
 type Cache struct {
-	dir string
+	dir    string
+	locks  map[string]*sync.RWMutex
+	lockMu sync.Mutex
 }
 
 // NewCache creates a new cache instance
@@ -31,11 +36,32 @@ func NewCache() (*Cache, error) {
 		return nil, fmt.Errorf("failed to create cache directory: %w", err)
 	}
 
-	return &Cache{dir: cacheDir}, nil
+	return &Cache{
+		dir:   cacheDir,
+		locks: make(map[string]*sync.RWMutex),
+	}, nil
 }
 
-// Set stores data in cache with TTL
+// getLock returns a per-key lock for thread-safe access
+func (c *Cache) getLock(key string) *sync.RWMutex {
+	c.lockMu.Lock()
+	defer c.lockMu.Unlock()
+
+	if lock, exists := c.locks[key]; exists {
+		return lock
+	}
+
+	lock := &sync.RWMutex{}
+	c.locks[key] = lock
+	return lock
+}
+
+// Set stores data in cache with TTL using atomic write (temp file + rename)
 func (c *Cache) Set(key string, data interface{}, ttl time.Duration) error {
+	lock := c.getLock(key)
+	lock.Lock()
+	defer lock.Unlock()
+
 	entry := CacheEntry{
 		Data:      data,
 		ExpiresAt: time.Now().Add(ttl),
@@ -46,13 +72,40 @@ func (c *Cache) Set(key string, data interface{}, ttl time.Duration) error {
 		return fmt.Errorf("failed to marshal cache entry: %w", err)
 	}
 
-	filePath := filepath.Join(c.dir, key+".json")
-	return os.WriteFile(filePath, jsonData, 0644)
+	filePath := filepath.Join(c.dir, c.sanitizeKey(key)+".json")
+
+	// Atomic write: write to temp file, then rename
+	tempFile := filePath + ".tmp." + c.generateTempSuffix()
+	if err := os.WriteFile(tempFile, jsonData, 0644); err != nil {
+		return fmt.Errorf("failed to write temp cache file: %w", err)
+	}
+
+	if err := os.Rename(tempFile, filePath); err != nil {
+		os.Remove(tempFile) // Clean up temp file on error
+		return fmt.Errorf("failed to rename cache file: %w", err)
+	}
+
+	return nil
 }
 
-// Get retrieves data from cache if not expired
+// sanitizeKey converts a key to a safe filename using SHA256 hash
+func (c *Cache) sanitizeKey(key string) string {
+	hash := sha256.Sum256([]byte(key))
+	return hex.EncodeToString(hash[:])
+}
+
+// generateTempSuffix generates a unique suffix for temp files
+func (c *Cache) generateTempSuffix() string {
+	return fmt.Sprintf("%d", time.Now().UnixNano())
+}
+
+// Get retrieves data from cache if not expired with thread-safe read lock
 func (c *Cache) Get(key string, target interface{}) (bool, error) {
-	filePath := filepath.Join(c.dir, key+".json")
+	lock := c.getLock(key)
+	lock.RLock()
+	defer lock.RUnlock()
+
+	filePath := filepath.Join(c.dir, c.sanitizeKey(key)+".json")
 
 	data, err := os.ReadFile(filePath)
 	if os.IsNotExist(err) {
@@ -68,7 +121,12 @@ func (c *Cache) Get(key string, target interface{}) (bool, error) {
 	}
 
 	if time.Now().After(entry.ExpiresAt) {
+		// Expired - need write lock to delete
+		lock.RUnlock()
+		lock.Lock()
 		os.Remove(filePath) // Clean up expired entry
+		lock.Unlock()
+		lock.RLock()
 		return false, nil
 	}
 

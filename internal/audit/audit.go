@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
 	"time"
 )
 
@@ -18,9 +19,10 @@ type Event struct {
 	Error     string    `json:"error,omitempty"`
 }
 
-// Logger handles audit logging
+// Logger handles audit logging with thread-safe operations
 type Logger struct {
 	file *os.File
+	mu   sync.Mutex
 }
 
 // NewLogger creates a new audit logger
@@ -44,8 +46,11 @@ func NewLogger() (*Logger, error) {
 	return &Logger{file: file}, nil
 }
 
-// Log records an audit event
+// Log records an audit event with thread-safe locking
 func (l *Logger) Log(user, command string, args []string, success bool, err error) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+
 	event := Event{
 		Timestamp: time.Now(),
 		User:      user,
@@ -62,7 +67,9 @@ func (l *Logger) Log(user, command string, args []string, success bool, err erro
 	l.file.WriteString(string(data) + "\n")
 }
 
-// Close closes the audit logger
+// Close closes the audit logger with thread-safe locking
 func (l *Logger) Close() error {
+	l.mu.Lock()
+	defer l.mu.Unlock()
 	return l.file.Close()
 }
