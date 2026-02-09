@@ -61,6 +61,13 @@ func LoadConfig(configFile string) (*types.Config, error) {
 		return nil, fmt.Errorf("config unmarshal failed: %w", err)
 	}
 
+	// Warn if token is found in config file (deprecated)
+	if config.Token != "" {
+		fmt.Fprintf(os.Stderr, "Warning: API token found in config file. This is deprecated for security reasons.\n")
+		fmt.Fprintf(os.Stderr, "         Run 'atlassian-cli auth login' to migrate to secure credential storage.\n")
+		fmt.Fprintf(os.Stderr, "         The token will be removed from the config file on next save.\n")
+	}
+
 	// Validate config
 	if err := validate.Struct(&config); err != nil {
 		return nil, fmt.Errorf("config validation failed: %w", err)
@@ -81,10 +88,10 @@ func SaveConfig(configFile string, config *types.Config) error {
 	v.SetConfigFile(configFile)
 	v.SetConfigType("yaml")
 
-	// Set all config values
+	// Set all config values (excluding token for security)
 	v.Set("api_endpoint", config.APIEndpoint)
 	v.Set("email", config.Email)
-	v.Set("token", config.Token)
+	// Note: token is intentionally excluded - use 'auth login' for secure credential storage
 	v.Set("default_jira_project", config.DefaultJiraProject)
 	v.Set("default_confluence_space", config.DefaultConfluenceSpace)
 	v.Set("timeout", config.Timeout)

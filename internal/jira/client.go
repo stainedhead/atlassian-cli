@@ -20,6 +20,8 @@ type JiraClient interface {
 	ListIssues(ctx context.Context, opts *types.IssueListOptions) (*types.IssueListResponse, error)
 	ListProjects(ctx context.Context, opts *types.ProjectListOptions) (*types.ProjectListResponse, error)
 	GetProject(ctx context.Context, key string) (*types.Project, error)
+	GetTransitions(ctx context.Context, issueKey string) ([]types.Transition, error)
+	TransitionIssue(ctx context.Context, issueKey string, transitionID string) error
 }
 
 // AtlassianJiraClient implements JiraClient using the go-atlassian library
@@ -189,9 +191,35 @@ func (c *AtlassianJiraClient) UpdateIssue(ctx context.Context, key string, req *
 
 	// Handle status transition if needed
 	if req.Status != nil {
-		// Note: Status updates require transitions, which is more complex
-		// For now, we'll return an error if status update is attempted
-		return nil, fmt.Errorf("status updates not yet implemented - use transitions")
+		// Get available transitions
+		transitions, err := c.GetTransitions(ctx, key)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get transitions: %w", err)
+		}
+
+		// Find the transition ID for the target status
+		var transitionID string
+		targetStatus := *req.Status
+		for _, t := range transitions {
+			if t.To.Name == targetStatus || t.Name == targetStatus {
+				transitionID = t.ID
+				break
+			}
+		}
+
+		if transitionID == "" {
+			// List available transitions in error message
+			availableTransitions := make([]string, len(transitions))
+			for i, t := range transitions {
+				availableTransitions[i] = fmt.Sprintf("%s (to: %s)", t.Name, t.To.Name)
+			}
+			return nil, fmt.Errorf("no transition found for status %q. Available transitions: %v", targetStatus, availableTransitions)
+		}
+
+		// Perform the transition
+		if err := c.TransitionIssue(ctx, key, transitionID); err != nil {
+			return nil, fmt.Errorf("failed to transition issue: %w", err)
+		}
 	}
 
 	// Fetch and return the updated issue
@@ -345,42 +373,65 @@ func (c *AtlassianJiraClient) ListProjects(ctx context.Context, opts *types.Proj
 	// Try cache first
 	cacheKey := "projects_list"
 	var cached types.ProjectListResponse
-	if cache, err := cache.NewCache(); err == nil {
-		if found, _ := cache.Get(cacheKey, &cached); found {
+	if cacheInstance, err := cache.NewCache(); err == nil {
+		if found, _ := cacheInstance.Get(cacheKey, &cached); found {
 			return &cached, nil
 		}
 	}
 
-	// Mock implementation for demonstration
-	projects := []types.Project{
-		{
-			ID:          "10000",
-			Key:         "DEMO",
-			Name:        "Demo Project",
-			Description: "Demonstration project for testing",
-			Lead:        "admin",
-			ProjectType: "software",
-		},
-		{
-			ID:          "10001",
-			Key:         "DEV",
-			Name:        "Development",
-			Description: "Development project",
-			Lead:        "dev-lead",
-			ProjectType: "software",
-		},
+	// Set defaults
+	startAt := 0
+	maxResults := 50
+	if opts != nil {
+		if opts.StartAt > 0 {
+			startAt = opts.StartAt
+		}
+		if opts.MaxResults > 0 {
+			maxResults = opts.MaxResults
+		}
+	}
+
+	// Call real JIRA API
+	projectsResult, resp, err := c.client.Project.Search(ctx, &models.ProjectSearchOptionsScheme{}, startAt, maxResults)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list projects: %w", err)
+	}
+
+	if resp == nil {
+		return nil, fmt.Errorf("empty response from JIRA API")
+	}
+
+	// Convert to our types
+	projects := make([]types.Project, 0, len(projectsResult.Values))
+	for _, p := range projectsResult.Values {
+		project := types.Project{
+			ID:          p.ID,
+			Key:         p.Key,
+			Name:        p.Name,
+			ProjectType: p.ProjectTypeKey,
+		}
+
+		if p.Description != "" {
+			project.Description = p.Description
+		}
+
+		if p.Lead != nil {
+			project.Lead = p.Lead.DisplayName
+		}
+
+		projects = append(projects, project)
 	}
 
 	response := &types.ProjectListResponse{
 		Projects:   projects,
-		Total:      2,
-		StartAt:    0,
-		MaxResults: 50,
+		Total:      projectsResult.Total,
+		StartAt:    projectsResult.StartAt,
+		MaxResults: projectsResult.MaxResults,
 	}
 
 	// Cache the result
-	if cache, err := cache.NewCache(); err == nil {
-		cache.Set(cacheKey, response, 5*time.Minute)
+	if cacheInstance, err := cache.NewCache(); err == nil {
+		cacheInstance.Set(cacheKey, response, 5*time.Minute)
 	}
 
 	return response, nil
@@ -388,13 +439,35 @@ func (c *AtlassianJiraClient) ListProjects(ctx context.Context, opts *types.Proj
 
 // GetProject retrieves a JIRA project by key
 func (c *AtlassianJiraClient) GetProject(ctx context.Context, key string) (*types.Project, error) {
-	// Mock implementation for demonstration
-	return &types.Project{
-		ID:          "10000",
-		Key:         key,
-		Name:        "Demo Project",
-		Description: "Demonstration project for testing",
-		Lead:        "admin",
-		ProjectType: "software",
-	}, nil
+	if key == "" {
+		return nil, fmt.Errorf("project key is required")
+	}
+
+	// Call real JIRA API
+	projectResult, resp, err := c.client.Project.Get(ctx, key, []string{"description", "lead", "url"})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get project %s: %w", key, err)
+	}
+
+	if resp == nil || projectResult == nil {
+		return nil, fmt.Errorf("empty response from JIRA API")
+	}
+
+	// Convert to our types
+	project := &types.Project{
+		ID:          projectResult.ID,
+		Key:         projectResult.Key,
+		Name:        projectResult.Name,
+		ProjectType: projectResult.ProjectTypeKey,
+	}
+
+	if projectResult.Description != "" {
+		project.Description = projectResult.Description
+	}
+
+	if projectResult.Lead != nil {
+		project.Lead = projectResult.Lead.DisplayName
+	}
+
+	return project, nil
 }

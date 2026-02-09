@@ -32,3 +32,11 @@ type AuthCredentials struct {
 	Email     string `json:"email" validate:"required,email"`
 	Token     string `json:"token" validate:"required"`
 }
+
+// UserInfo represents an authenticated Atlassian user profile
+type UserInfo struct {
+	AccountID   string `json:"accountId" validate:"required"`
+	DisplayName string `json:"displayName" validate:"required"`
+	Email       string `json:"emailAddress"`
+	Active      bool   `json:"active"`
+}

@@ -32,7 +32,8 @@ type PageListOptions struct {
 	SpaceKey   string `json:"spaceKey"`
 	Title      string `json:"title"`
 	MaxResults int    `json:"maxResults"`
-	StartAt    int    `json:"startAt"`
+	StartAt    int    `json:"startAt"` // Retained for backward compatibility
+	Cursor     string `json:"cursor"`  // Cursor-based pagination for Confluence v2
 }
 
 // PageListResponse represents the response from listing pages
@@ -41,6 +42,7 @@ type PageListResponse struct {
 	Total      int    `json:"total"`
 	StartAt    int    `json:"startAt"`
 	MaxResults int    `json:"maxResults"`
+	NextCursor string `json:"nextCursor"` // Cursor for next page of results (Confluence v2)
 }
 
 // Space represents a Confluence space

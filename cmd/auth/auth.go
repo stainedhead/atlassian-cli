@@ -24,6 +24,7 @@ func NewAuthCmd(tokenManager auth.TokenManager) *cobra.Command {
 	cmd.AddCommand(newLoginCmd(tokenManager))
 	cmd.AddCommand(newLogoutCmd(tokenManager))
 	cmd.AddCommand(newStatusCmd(tokenManager))
+	cmd.AddCommand(newValidateCmd(tokenManager))
 
 	return cmd
 }
@@ -51,20 +52,29 @@ Example:
 				return err
 			}
 
-			creds := &types.AuthCredentials{
-				ServerURL: serverURL,
-				Email:     email,
-				Token:     token,
+			ctx := context.Background()
+
+			// Validate credentials against the Atlassian API before storing
+			userInfo, err := tokenManager.Validate(ctx, serverURL, email, token)
+			if err != nil {
+				return err
 			}
 
+			// Display authenticated user info
+			fmt.Fprintf(cmd.OutOrStdout(), "✓ Authenticated as %s (%s)\n", userInfo.DisplayName, email)
+
+			// Store credentials if not disabled
 			if !noStore {
-				if err := tokenManager.Store(context.Background(), creds); err != nil {
+				creds := &types.AuthCredentials{
+					ServerURL: serverURL,
+					Email:     email,
+					Token:     token,
+				}
+
+				if err := tokenManager.Store(ctx, creds); err != nil {
 					return fmt.Errorf("failed to store credentials: %w", err)
 				}
-			}
 
-			fmt.Fprintf(cmd.OutOrStdout(), "✓ Authenticated as %s\n", email)
-			if !noStore {
 				fmt.Fprintf(cmd.OutOrStdout(), "  Credentials stored securely\n")
 			}
 
@@ -132,6 +142,52 @@ func newStatusCmd(tokenManager auth.TokenManager) *cobra.Command {
 			}
 
 			fmt.Fprintf(cmd.OutOrStdout(), "✓ Authenticated as %s for %s\n", creds.Email, serverURL)
+			return nil
+		},
+	}
+
+	cmd.Flags().StringVar(&serverURL, "server", "", "Atlassian instance URL (required)")
+	cmd.MarkFlagRequired("server")
+
+	return cmd
+}
+
+// newValidateCmd creates the validate command
+func newValidateCmd(tokenManager auth.TokenManager) *cobra.Command {
+	var serverURL string
+
+	cmd := &cobra.Command{
+		Use:   "validate",
+		Short: "Validate stored credentials",
+		Long:  `Re-validate stored authentication credentials against the Atlassian API without requiring re-entry`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if serverURL == "" {
+				return fmt.Errorf("server URL is required")
+			}
+
+			ctx := context.Background()
+
+			// Retrieve stored credentials
+			creds, err := tokenManager.Get(ctx, serverURL)
+			if err != nil {
+				return fmt.Errorf("no stored credentials found for %s. Run 'auth login' first", serverURL)
+			}
+
+			// Validate credentials against the API
+			userInfo, err := tokenManager.Validate(ctx, serverURL, creds.Email, creds.Token)
+			if err != nil {
+				return err
+			}
+
+			// Display validation success
+			fmt.Fprintf(cmd.OutOrStdout(), "✓ Credentials are valid\n")
+			fmt.Fprintf(cmd.OutOrStdout(), "  Authenticated as %s (%s)\n", userInfo.DisplayName, creds.Email)
+			if userInfo.Active {
+				fmt.Fprintf(cmd.OutOrStdout(), "  Account status: Active\n")
+			} else {
+				fmt.Fprintf(cmd.OutOrStdout(), "  Account status: Inactive\n")
+			}
+
 			return nil
 		},
 	}

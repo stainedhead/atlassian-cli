@@ -22,14 +22,14 @@ type Issue struct {
 
 // CreateIssueRequest represents a request to create a new issue
 type CreateIssueRequest struct {
-	Project     string            `json:"project" validate:"required"`
-	Summary     string            `json:"summary" validate:"required"`
-	Description string            `json:"description"`
-	IssueType   string            `json:"issueType" validate:"required"`
-	Priority    string            `json:"priority"`
-	Assignee    string            `json:"assignee"`
-	Labels      []string          `json:"labels"`
-	Components  []string          `json:"components"`
+	Project      string                 `json:"project" validate:"required"`
+	Summary      string                 `json:"summary" validate:"required"`
+	Description  string                 `json:"description"`
+	IssueType    string                 `json:"issueType" validate:"required"`
+	Priority     string                 `json:"priority"`
+	Assignee     string                 `json:"assignee"`
+	Labels       []string               `json:"labels"`
+	Components   []string               `json:"components"`
 	CustomFields map[string]interface{} `json:"customFields"`
 }
 
@@ -61,4 +61,13 @@ type IssueListResponse struct {
 	Total      int     `json:"total"`
 	StartAt    int     `json:"startAt"`
 	MaxResults int     `json:"maxResults"`
+}
+
+// Transition represents a JIRA issue status transition
+type Transition struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+	To   struct {
+		Name string `json:"name"`
+	} `json:"to"`
 }

@@ -67,7 +67,7 @@ Features:
 	// Viper bindings for global project/space flags removed
 
 	// Add subcommands
-	tokenManager := authManager.NewMemoryTokenManager()
+	tokenManager := createTokenManager()
 	cmd.AddCommand(auth.NewAuthCmd(tokenManager))
 	cmd.AddCommand(issue.NewIssueCmd(tokenManager))
 	cmd.AddCommand(project.NewProjectCmd(tokenManager))
@@ -178,4 +178,40 @@ PowerShell:
 	}
 
 	return cmd
+}
+
+// createTokenManager creates a token manager with tiered fallback
+// Priority: Keychain -> Encrypted File -> Memory
+func createTokenManager() authManager.TokenManager {
+	// Try OS keychain first
+	keychainManager := authManager.NewKeychainTokenManager()
+	
+	// Test if keychain is available by attempting a no-op operation
+	// We try to get a non-existent key to see if keychain access works
+	ctx := os.Stdin.Context()
+	_, err := keychainManager.Get(ctx, "test-availability")
+	
+	// If the error is "not found", keychain is working
+	// If the error is about platform support or access, keychain is not available
+	if err != nil && err.Error() == "credentials not found for server: test-availability" {
+		// Keychain is available
+		if debug || verbose {
+			fmt.Fprintf(os.Stderr, "Using OS keychain for credential storage\n")
+		}
+		return keychainManager
+	}
+	
+	// Try encrypted file fallback
+	encryptedManager, err := authManager.NewEncryptedFileTokenManager("")
+	if err == nil {
+		if debug || verbose {
+			fmt.Fprintf(os.Stderr, "OS keychain unavailable, using encrypted file storage\n")
+		}
+		return encryptedManager
+	}
+	
+	// Fallback to memory (with warning)
+	fmt.Fprintf(os.Stderr, "Warning: Using in-memory credential storage. Credentials will not persist across sessions.\n")
+	fmt.Fprintf(os.Stderr, "         Run 'auth login' in each session to authenticate.\n")
+	return authManager.NewMemoryTokenManager()
 }
