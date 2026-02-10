@@ -1,6 +1,7 @@
 package space
 
 import (
+	"atlassian-cli/internal/cmdutil"
 	"atlassian-cli/internal/auth"
 	"atlassian-cli/internal/config"
 	"atlassian-cli/internal/confluence"
@@ -11,7 +12,6 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 // NewSpaceCmd creates the space command with subcommands
@@ -46,7 +46,7 @@ Examples:
   # List only personal spaces
   atlassian-cli space list --type personal`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, err := config.LoadConfig(viper.GetString("config"))
+			cfg, err := config.LoadConfig(cmdutil.GetConfigPath(cmd))
 			if err != nil {
 				return fmt.Errorf("failed to load config: %w", err)
 			}
@@ -84,7 +84,7 @@ Examples:
 }
 
 func outputSpaceList(cmd *cobra.Command, response *types.SpaceListResponse) error {
-	format := viper.GetString("output")
+	format := cmdutil.GetOutputFormat(cmd)
 
 	switch format {
 	case "json":

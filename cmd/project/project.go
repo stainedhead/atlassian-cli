@@ -1,6 +1,7 @@
 package project
 
 import (
+	"atlassian-cli/internal/cmdutil"
 	"atlassian-cli/internal/auth"
 	"atlassian-cli/internal/config"
 	"atlassian-cli/internal/jira"
@@ -11,7 +12,6 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 // NewProjectCmd creates the project command with subcommands
@@ -43,7 +43,7 @@ Examples:
   # List all projects
   atlassian-cli project list`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, err := config.LoadConfig(viper.GetString("config"))
+			cfg, err := config.LoadConfig(cmdutil.GetConfigPath(cmd))
 			if err != nil {
 				return fmt.Errorf("failed to load config: %w", err)
 			}
@@ -87,7 +87,7 @@ func newGetCmd(tokenManager auth.TokenManager) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			projectKey := args[0]
 
-			cfg, err := config.LoadConfig(viper.GetString("config"))
+			cfg, err := config.LoadConfig(cmdutil.GetConfigPath(cmd))
 			if err != nil {
 				return fmt.Errorf("failed to load config: %w", err)
 			}
@@ -115,7 +115,7 @@ func newGetCmd(tokenManager auth.TokenManager) *cobra.Command {
 }
 
 func outputProject(cmd *cobra.Command, project *types.Project) error {
-	format := viper.GetString("output")
+	format := cmdutil.GetOutputFormat(cmd)
 
 	switch format {
 	case "json":
@@ -134,7 +134,7 @@ func outputProject(cmd *cobra.Command, project *types.Project) error {
 }
 
 func outputProjectList(cmd *cobra.Command, response *types.ProjectListResponse) error {
-	format := viper.GetString("output")
+	format := cmdutil.GetOutputFormat(cmd)
 
 	switch format {
 	case "json":

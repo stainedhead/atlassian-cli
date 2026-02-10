@@ -13,6 +13,7 @@ import (
 	"atlassian-cli/cmd/project"
 	"atlassian-cli/cmd/space"
 	authManager "atlassian-cli/internal/auth"
+	"atlassian-cli/internal/cmdutil"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -28,22 +29,32 @@ var (
 
 // newRootCmd creates the root command
 func newRootCmd() *cobra.Command {
+	// Create local viper instance
+	v := viper.New()
+
 	cmd := &cobra.Command{
 		Use:   "atlassian-cli",
 		Short: "Developer toolkit for JIRA and Confluence",
-		Long: `Atlassian CLI is a command-line tool that streamlines development workflows 
+		Long: `Atlassian CLI is a command-line tool that streamlines development workflows
 by providing intuitive access to JIRA and Confluence operations.
 
 Features:
 • Smart default configuration for projects and spaces
-• Secure credential management with OS keychain integration  
+• Secure credential management with OS keychain integration
 • Multi-format output (JSON, table, YAML)
 • Comprehensive JIRA issue and project management
 • Full Confluence page and space operations
 • Enterprise-grade reliability with caching and retry logic`,
 		Version: version,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			return initializeConfig()
+			// Initialize config with local viper instance
+			if err := initializeConfigWithViper(v); err != nil {
+				return err
+			}
+			// Store viper in context for subcommands
+			ctx := context.WithValue(cmd.Context(), cmdutil.ViperKey, v)
+			cmd.SetContext(ctx)
+			return nil
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 0 {
@@ -61,10 +72,10 @@ Features:
 	// Global project/space flags removed - use command-specific flags instead
 	cmd.PersistentFlags().Bool("no-color", false, "disable colored output")
 
-	// Bind flags to viper
-	viper.BindPFlag("output", cmd.PersistentFlags().Lookup("output"))
-	viper.BindPFlag("verbose", cmd.PersistentFlags().Lookup("verbose"))
-	viper.BindPFlag("debug", cmd.PersistentFlags().Lookup("debug"))
+	// Bind flags to local viper instance
+	v.BindPFlag("output", cmd.PersistentFlags().Lookup("output"))
+	v.BindPFlag("verbose", cmd.PersistentFlags().Lookup("verbose"))
+	v.BindPFlag("debug", cmd.PersistentFlags().Lookup("debug"))
 	// Viper bindings for global project/space flags removed
 
 	// Add subcommands
@@ -86,10 +97,10 @@ func Execute() error {
 	return newRootCmd().Execute()
 }
 
-// initializeConfig reads in config file and ENV variables if set
-func initializeConfig() error {
+// initializeConfigWithViper reads in config file and ENV variables with a specific viper instance
+func initializeConfigWithViper(v *viper.Viper) error {
 	if cfgFile != "" {
-		viper.SetConfigFile(cfgFile)
+		v.SetConfigFile(cfgFile)
 	} else {
 		// Find home directory
 		home, err := os.UserHomeDir()
@@ -98,26 +109,26 @@ func initializeConfig() error {
 		}
 
 		// Search config in home directory and current directory
-		viper.AddConfigPath(home + "/.atlassian-cli")
-		viper.AddConfigPath(".")
-		viper.SetConfigType("yaml")
-		viper.SetConfigName("config")
+		v.AddConfigPath(home + "/.atlassian-cli")
+		v.AddConfigPath(".")
+		v.SetConfigType("yaml")
+		v.SetConfigName("config")
 	}
 
 	// Environment variable configuration
-	viper.SetEnvPrefix("ATLASSIAN")
-	viper.AutomaticEnv()
+	v.SetEnvPrefix("ATLASSIAN")
+	v.AutomaticEnv()
 
 	// Set defaults
-	viper.SetDefault("timeout", "30s")
-	viper.SetDefault("output", "table")
-	viper.SetDefault("default_jira_project", "")
-	viper.SetDefault("default_confluence_space", "")
-	viper.SetDefault("debug", false)
-	viper.SetDefault("verbose", false)
+	v.SetDefault("timeout", "30s")
+	v.SetDefault("output", "table")
+	v.SetDefault("default_jira_project", "")
+	v.SetDefault("default_confluence_space", "")
+	v.SetDefault("debug", false)
+	v.SetDefault("verbose", false)
 
 	// Read config file if it exists
-	if err := viper.ReadInConfig(); err != nil {
+	if err := v.ReadInConfig(); err != nil {
 		// Config file not found is not an error
 		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
 			return fmt.Errorf("error reading config file: %w", err)

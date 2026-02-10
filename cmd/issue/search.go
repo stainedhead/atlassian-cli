@@ -1,6 +1,7 @@
 package issue
 
 import (
+	"atlassian-cli/internal/cmdutil"
 	"atlassian-cli/internal/auth"
 	"atlassian-cli/internal/config"
 	"atlassian-cli/internal/jira"
@@ -10,7 +11,6 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 // newSearchCmd creates the issue search command
@@ -40,7 +40,7 @@ Examples:
   atlassian-cli issue search --status Open --type Bug`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// Load configuration
-			cfg, err := config.LoadConfig(viper.GetString("config"))
+			cfg, err := config.LoadConfig(cmdutil.GetConfigPath(cmd))
 			if err != nil {
 				return fmt.Errorf("failed to load config: %w", err)
 			}

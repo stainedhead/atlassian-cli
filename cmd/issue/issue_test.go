@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"atlassian-cli/internal/auth"
+
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 )

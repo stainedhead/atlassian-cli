@@ -1,6 +1,7 @@
 package issue
 
 import (
+	"atlassian-cli/internal/cmdutil"
 	"atlassian-cli/internal/auth"
 	"atlassian-cli/internal/config"
 	"atlassian-cli/internal/jira"
@@ -11,7 +12,6 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 // NewIssueCmd creates the issue command with subcommands
@@ -58,7 +58,7 @@ Examples:
   atlassian-cli issue create --jira-project MYPROJ --type Bug --summary "Fix issue"`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// Load configuration
-			cfg, err := config.LoadConfig(viper.GetString("config"))
+			cfg, err := config.LoadConfig(cmdutil.GetConfigPath(cmd))
 			if err != nil {
 				return fmt.Errorf("failed to load config: %w", err)
 			}
@@ -129,7 +129,7 @@ func newGetCmd(tokenManager auth.TokenManager) *cobra.Command {
 			issueKey := args[0]
 
 			// Load configuration
-			cfg, err := config.LoadConfig(viper.GetString("config"))
+			cfg, err := config.LoadConfig(cmdutil.GetConfigPath(cmd))
 			if err != nil {
 				return fmt.Errorf("failed to load config: %w", err)
 			}
@@ -188,7 +188,7 @@ Examples:
   atlassian-cli issue list --jql "project = DEMO AND assignee = currentUser()"`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// Load configuration
-			cfg, err := config.LoadConfig(viper.GetString("config"))
+			cfg, err := config.LoadConfig(cmdutil.GetConfigPath(cmd))
 			if err != nil {
 				return fmt.Errorf("failed to load config: %w", err)
 			}
@@ -267,7 +267,7 @@ func newUpdateCmd(tokenManager auth.TokenManager) *cobra.Command {
 			issueKey := args[0]
 
 			// Load configuration
-			cfg, err := config.LoadConfig(viper.GetString("config"))
+			cfg, err := config.LoadConfig(cmdutil.GetConfigPath(cmd))
 			if err != nil {
 				return fmt.Errorf("failed to load config: %w", err)
 			}
@@ -329,7 +329,7 @@ func newUpdateCmd(tokenManager auth.TokenManager) *cobra.Command {
 
 // outputIssue outputs a single issue in the configured format
 func outputIssue(cmd *cobra.Command, issue *types.Issue) error {
-	format := viper.GetString("output")
+	format := cmdutil.GetOutputFormat(cmd)
 
 	switch format {
 	case "json":
@@ -363,7 +363,7 @@ func outputIssue(cmd *cobra.Command, issue *types.Issue) error {
 
 // outputIssueList outputs a list of issues in the configured format
 func outputIssueList(cmd *cobra.Command, response *types.IssueListResponse) error {
-	format := viper.GetString("output")
+	format := cmdutil.GetOutputFormat(cmd)
 
 	switch format {
 	case "json":

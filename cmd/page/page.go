@@ -1,6 +1,7 @@
 package page
 
 import (
+	"atlassian-cli/internal/cmdutil"
 	"atlassian-cli/internal/auth"
 	"atlassian-cli/internal/config"
 	"atlassian-cli/internal/confluence"
@@ -11,7 +12,6 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 // NewPageCmd creates the page command with subcommands
@@ -51,7 +51,7 @@ Examples:
   # Override default space
   atlassian-cli page create --confluence-space DOCS --title "API Guide"`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, err := config.LoadConfig(viper.GetString("config"))
+			cfg, err := config.LoadConfig(cmdutil.GetConfigPath(cmd))
 			if err != nil {
 				return fmt.Errorf("failed to load config: %w", err)
 			}
@@ -106,7 +106,7 @@ func newGetCmd(tokenManager auth.TokenManager) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			pageID := args[0]
 
-			cfg, err := config.LoadConfig(viper.GetString("config"))
+			cfg, err := config.LoadConfig(cmdutil.GetConfigPath(cmd))
 			if err != nil {
 				return fmt.Errorf("failed to load config: %w", err)
 			}
@@ -153,7 +153,7 @@ Examples:
   # List pages with specific title
   atlassian-cli page list --title "API"`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, err := config.LoadConfig(viper.GetString("config"))
+			cfg, err := config.LoadConfig(cmdutil.GetConfigPath(cmd))
 			if err != nil {
 				return fmt.Errorf("failed to load config: %w", err)
 			}
@@ -214,7 +214,7 @@ func newUpdateCmd(tokenManager auth.TokenManager) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			pageID := args[0]
 
-			cfg, err := config.LoadConfig(viper.GetString("config"))
+			cfg, err := config.LoadConfig(cmdutil.GetConfigPath(cmd))
 			if err != nil {
 				return fmt.Errorf("failed to load config: %w", err)
 			}
@@ -253,7 +253,7 @@ func newUpdateCmd(tokenManager auth.TokenManager) *cobra.Command {
 }
 
 func outputPage(cmd *cobra.Command, page *types.Page) error {
-	format := viper.GetString("output")
+	format := cmdutil.GetOutputFormat(cmd)
 
 	switch format {
 	case "json":
@@ -279,7 +279,7 @@ func outputPage(cmd *cobra.Command, page *types.Page) error {
 }
 
 func outputPageList(cmd *cobra.Command, response *types.PageListResponse) error {
-	format := viper.GetString("output")
+	format := cmdutil.GetOutputFormat(cmd)
 
 	switch format {
 	case "json":
