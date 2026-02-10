@@ -4,7 +4,6 @@ import (
 	"atlassian-cli/internal/cmdutil"
 	"atlassian-cli/internal/auth"
 	"atlassian-cli/internal/config"
-	"atlassian-cli/internal/confluence"
 	"atlassian-cli/internal/types"
 	"context"
 	"fmt"
@@ -51,10 +50,11 @@ Examples:
 				return fmt.Errorf("not authenticated: %w", err)
 			}
 
-			// Create Confluence client
-			client, err := confluence.NewAtlassianConfluenceClient(cfg.APIEndpoint, creds.Email, creds.Token)
+			// Get Confluence client from factory
+			factory := cmdutil.GetFactory(cmd)
+			client, err := factory.GetConfluenceClient(context.Background(), cfg.APIEndpoint, creds.Email, creds.Token)
 			if err != nil {
-				return fmt.Errorf("failed to create Confluence client: %w", err)
+				return fmt.Errorf("failed to get Confluence client: %w", err)
 			}
 
 			// Build CQL query

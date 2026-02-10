@@ -1,6 +1,8 @@
 package cmdutil
 
 import (
+	"atlassian-cli/internal/client"
+
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -9,7 +11,8 @@ import (
 type contextKey string
 
 const (
-	ViperKey contextKey = "viper"
+	ViperKey   contextKey = "viper"
+	FactoryKey contextKey = "factory"
 )
 
 // GetViperFromCmd retrieves the viper instance from the command context
@@ -31,4 +34,13 @@ func GetConfigPath(cmd *cobra.Command) string {
 func GetOutputFormat(cmd *cobra.Command) string {
 	v := GetViperFromCmd(cmd)
 	return v.GetString("output")
+}
+
+// GetFactory retrieves the client factory from the command context
+func GetFactory(cmd *cobra.Command) *client.Factory {
+	if f := cmd.Context().Value(FactoryKey); f != nil {
+		return f.(*client.Factory)
+	}
+	// If no factory in context, create a new one (shouldn't happen in normal execution)
+	return client.NewFactory()
 }

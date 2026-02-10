@@ -4,7 +4,6 @@ import (
 	"atlassian-cli/internal/cmdutil"
 	"atlassian-cli/internal/auth"
 	"atlassian-cli/internal/config"
-	"atlassian-cli/internal/confluence"
 	"atlassian-cli/internal/types"
 	"context"
 	"encoding/json"
@@ -66,9 +65,10 @@ Examples:
 				return fmt.Errorf("not authenticated: %w", err)
 			}
 
-			client, err := confluence.NewAtlassianConfluenceClient(cfg.APIEndpoint, creds.Email, creds.Token)
+			factory := cmdutil.GetFactory(cmd)
+			client, err := factory.GetConfluenceClient(context.Background(), cfg.APIEndpoint, creds.Email, creds.Token)
 			if err != nil {
-				return fmt.Errorf("failed to create Confluence client: %w", err)
+				return fmt.Errorf("failed to get Confluence client: %w", err)
 			}
 
 			req := &types.CreatePageRequest{
@@ -116,9 +116,10 @@ func newGetCmd(tokenManager auth.TokenManager) *cobra.Command {
 				return fmt.Errorf("not authenticated: %w", err)
 			}
 
-			client, err := confluence.NewAtlassianConfluenceClient(cfg.APIEndpoint, creds.Email, creds.Token)
+			factory := cmdutil.GetFactory(cmd)
+			client, err := factory.GetConfluenceClient(context.Background(), cfg.APIEndpoint, creds.Email, creds.Token)
 			if err != nil {
-				return fmt.Errorf("failed to create Confluence client: %w", err)
+				return fmt.Errorf("failed to get Confluence client: %w", err)
 			}
 
 			page, err := client.GetPage(context.Background(), pageID)
@@ -171,9 +172,10 @@ Examples:
 				return fmt.Errorf("not authenticated: %w", err)
 			}
 
-			client, err := confluence.NewAtlassianConfluenceClient(cfg.APIEndpoint, creds.Email, creds.Token)
+			factory := cmdutil.GetFactory(cmd)
+			client, err := factory.GetConfluenceClient(context.Background(), cfg.APIEndpoint, creds.Email, creds.Token)
 			if err != nil {
-				return fmt.Errorf("failed to create Confluence client: %w", err)
+				return fmt.Errorf("failed to get Confluence client: %w", err)
 			}
 
 			opts := &types.PageListOptions{
@@ -224,9 +226,10 @@ func newUpdateCmd(tokenManager auth.TokenManager) *cobra.Command {
 				return fmt.Errorf("not authenticated: %w", err)
 			}
 
-			client, err := confluence.NewAtlassianConfluenceClient(cfg.APIEndpoint, creds.Email, creds.Token)
+			factory := cmdutil.GetFactory(cmd)
+			client, err := factory.GetConfluenceClient(context.Background(), cfg.APIEndpoint, creds.Email, creds.Token)
 			if err != nil {
-				return fmt.Errorf("failed to create Confluence client: %w", err)
+				return fmt.Errorf("failed to get Confluence client: %w", err)
 			}
 
 			req := &types.UpdatePageRequest{}

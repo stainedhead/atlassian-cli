@@ -4,7 +4,6 @@ import (
 	"atlassian-cli/internal/cmdutil"
 	"atlassian-cli/internal/auth"
 	"atlassian-cli/internal/config"
-	"atlassian-cli/internal/jira"
 	"atlassian-cli/internal/types"
 	"context"
 	"fmt"
@@ -51,10 +50,11 @@ Examples:
 				return fmt.Errorf("not authenticated: %w", err)
 			}
 
-			// Create JIRA client
-			client, err := jira.NewAtlassianJiraClient(cfg.APIEndpoint, creds.Email, creds.Token)
+			// Get JIRA client from factory
+			factory := cmdutil.GetFactory(cmd)
+			client, err := factory.GetJiraClient(context.Background(), cfg.APIEndpoint, creds.Email, creds.Token)
 			if err != nil {
-				return fmt.Errorf("failed to create JIRA client: %w", err)
+				return fmt.Errorf("failed to get JIRA client: %w", err)
 			}
 
 			// Build JQL query

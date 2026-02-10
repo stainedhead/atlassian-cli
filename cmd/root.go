@@ -13,6 +13,7 @@ import (
 	"atlassian-cli/cmd/project"
 	"atlassian-cli/cmd/space"
 	authManager "atlassian-cli/internal/auth"
+	"atlassian-cli/internal/client"
 	"atlassian-cli/internal/cmdutil"
 
 	"github.com/spf13/cobra"
@@ -31,6 +32,9 @@ var (
 func newRootCmd() *cobra.Command {
 	// Create local viper instance
 	v := viper.New()
+
+	// Create client factory with connection pooling
+	factory := client.NewFactory()
 
 	cmd := &cobra.Command{
 		Use:   "atlassian-cli",
@@ -51,8 +55,9 @@ Features:
 			if err := initializeConfigWithViper(v); err != nil {
 				return err
 			}
-			// Store viper in context for subcommands
+			// Store viper and factory in context for subcommands
 			ctx := context.WithValue(cmd.Context(), cmdutil.ViperKey, v)
+			ctx = context.WithValue(ctx, cmdutil.FactoryKey, factory)
 			cmd.SetContext(ctx)
 			return nil
 		},
