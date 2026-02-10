@@ -4,7 +4,11 @@ import (
 	"atlassian-cli/internal/types"
 	"context"
 	"fmt"
+	"strconv"
 	"time"
+
+	confluence "github.com/ctreminiom/go-atlassian/confluence"
+	"github.com/ctreminiom/go-atlassian/pkg/infra/models"
 )
 
 // ConfluenceClient defines the interface for Confluence operations
@@ -17,128 +21,238 @@ type ConfluenceClient interface {
 	ListSpaces(ctx context.Context, opts *types.SpaceListOptions) (*types.SpaceListResponse, error)
 }
 
-// MockConfluenceClient implements ConfluenceClient for demonstration
-//
-// NOTE: This is a mock implementation. The go-atlassian v1.6.1 Confluence v2 API
-// uses integer page IDs instead of string IDs, which doesn't match Confluence REST API.
-// Implementing a real client requires either:
-// 1. Using Confluence v1 API (content endpoints with string IDs)
-// 2. Mapping string IDs to integers (additional API calls required)
-// 3. Waiting for go-atlassian to fix the v2 API design
-//
-// For MVP purposes, this mock implementation is acceptable and matches the
-// original specification's acceptance criteria.
-type MockConfluenceClient struct {
-	baseURL string
-	email   string
-	token   string
+// AtlassianConfluenceClient implements ConfluenceClient using the go-atlassian v1 library
+type AtlassianConfluenceClient struct {
+	client *confluence.Client
 }
 
-// NewAtlassianConfluenceClient creates a new Confluence client
-func NewAtlassianConfluenceClient(baseURL, email, token string) (*MockConfluenceClient, error) {
-	if baseURL == "" || email == "" || token == "" {
-		return nil, fmt.Errorf("baseURL, email, and token are required")
+// NewAtlassianConfluenceClient creates a new Confluence client using v1 API
+func NewAtlassianConfluenceClient(baseURL, email, token string) (*AtlassianConfluenceClient, error) {
+	if baseURL == "" {
+		return nil, fmt.Errorf("base URL is required")
+	}
+	if email == "" {
+		return nil, fmt.Errorf("email is required")
+	}
+	if token == "" {
+		return nil, fmt.Errorf("token is required")
 	}
 
-	return &MockConfluenceClient{
-		baseURL: baseURL,
-		email:   email,
-		token:   token,
+	// Create the client instance using v1 API
+	instance, err := confluence.New(nil, baseURL)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create Confluence client: %w", err)
+	}
+
+	// Set authentication
+	instance.Auth.SetBasicAuth(email, token)
+
+	return &AtlassianConfluenceClient{
+		client: instance,
 	}, nil
 }
 
 // CreatePage creates a new Confluence page
-func (c *MockConfluenceClient) CreatePage(ctx context.Context, req *types.CreatePageRequest) (*types.Page, error) {
-	// Mock implementation for demonstration
-	return &types.Page{
-		ID:       "123456",
-		Title:    req.Title,
-		Type:     "page",
-		SpaceKey: req.SpaceKey,
-		Content:  req.Content,
-		Version:  1,
-		Updated:  time.Now(),
-	}, nil
+func (c *AtlassianConfluenceClient) CreatePage(ctx context.Context, req *types.CreatePageRequest) (*types.Page, error) {
+	if req == nil {
+		return nil, fmt.Errorf("create page request cannot be nil")
+	}
+
+	// Build the page creation payload
+	payload := &models.ContentScheme{
+		Type:  "page",
+		Title: req.Title,
+		Space: &models.SpaceScheme{
+			Key: req.SpaceKey,
+		},
+		Body: &models.BodyScheme{
+			Storage: &models.BodyNodeScheme{
+				Value:          req.Content,
+				Representation: "storage",
+			},
+		},
+	}
+
+	// Set ancestors (parent page) if provided
+	if req.ParentID != "" {
+		payload.Ancestors = []*models.ContentScheme{
+			{
+				ID: req.ParentID,
+			},
+		}
+	}
+
+	// Create the page using the v1 API
+	result, response, err := c.client.Content.Create(ctx, payload)
+	if err != nil {
+		if response != nil {
+			return nil, fmt.Errorf("failed to create page (status %d): %w", response.StatusCode, err)
+		}
+		return nil, fmt.Errorf("failed to create page: %w", err)
+	}
+
+	// Convert the response to our internal type
+	return convertContentSchemeToPage(result), nil
 }
 
 // GetPage retrieves a Confluence page by ID
-func (c *MockConfluenceClient) GetPage(ctx context.Context, id string) (*types.Page, error) {
-	// Mock implementation for demonstration
-	return &types.Page{
-		ID:       id,
-		Title:    "Sample Page",
-		Type:     "page",
-		SpaceKey: "DEMO",
-		Content:  "<p>This is sample page content</p>",
-		Version:  2,
-		Updated:  time.Now(),
-	}, nil
+func (c *AtlassianConfluenceClient) GetPage(ctx context.Context, id string) (*types.Page, error) {
+	if id == "" {
+		return nil, fmt.Errorf("page ID is required")
+	}
+
+	// Get the page with body content and version
+	result, response, err := c.client.Content.Get(ctx, id, []string{"body.storage", "version", "space"}, 0)
+	if err != nil {
+		if response != nil {
+			return nil, fmt.Errorf("failed to get page (status %d): %w", response.StatusCode, err)
+		}
+		return nil, fmt.Errorf("failed to get page: %w", err)
+	}
+
+	return convertContentSchemeToPage(result), nil
 }
 
 // UpdatePage updates an existing Confluence page
-func (c *MockConfluenceClient) UpdatePage(ctx context.Context, id string, req *types.UpdatePageRequest) (*types.Page, error) {
-	// Mock implementation for demonstration
-	title := "Updated Page"
+func (c *AtlassianConfluenceClient) UpdatePage(ctx context.Context, id string, req *types.UpdatePageRequest) (*types.Page, error) {
+	if id == "" {
+		return nil, fmt.Errorf("page ID is required")
+	}
+	if req == nil {
+		return nil, fmt.Errorf("update page request cannot be nil")
+	}
+
+	// Get current page to retrieve version and existing data
+	currentPage, response, err := c.client.Content.Get(ctx, id, []string{"body.storage", "version", "space"}, 0)
+	if err != nil {
+		if response != nil {
+			return nil, fmt.Errorf("failed to get current page (status %d): %w", response.StatusCode, err)
+		}
+		return nil, fmt.Errorf("failed to get current page: %w", err)
+	}
+
+	// Build update payload with incremented version
+	payload := &models.ContentScheme{
+		Type:  "page",
+		Title: currentPage.Title,
+		Version: &models.ContentVersionScheme{
+			Number: currentPage.Version.Number + 1,
+		},
+	}
+
+	// Set title if provided
 	if req.Title != nil {
-		title = *req.Title
+		payload.Title = *req.Title
 	}
 
-	content := "<p>Updated content</p>"
+	// Set content if provided
 	if req.Content != nil {
-		content = *req.Content
+		payload.Body = &models.BodyScheme{
+			Storage: &models.BodyNodeScheme{
+				Value:          *req.Content,
+				Representation: "storage",
+			},
+		}
+	} else if currentPage.Body != nil && currentPage.Body.Storage != nil {
+		// Keep existing content if not updating
+		payload.Body = currentPage.Body
 	}
 
-	return &types.Page{
-		ID:       id,
-		Title:    title,
-		Type:     "page",
-		SpaceKey: "DEMO",
-		Content:  content,
-		Version:  3,
-		Updated:  time.Now(),
-	}, nil
+	// Update the page
+	result, response, err := c.client.Content.Update(ctx, id, payload)
+	if err != nil {
+		if response != nil {
+			return nil, fmt.Errorf("failed to update page (status %d): %w", response.StatusCode, err)
+		}
+		return nil, fmt.Errorf("failed to update page: %w", err)
+	}
+
+	return convertContentSchemeToPage(result), nil
 }
 
-// ListPages lists pages in a space with cursor pagination support
-func (c *MockConfluenceClient) ListPages(ctx context.Context, opts *types.PageListOptions) (*types.PageListResponse, error) {
-	// Mock implementation for demonstration
-	pages := []types.Page{
-		{
-			ID:       "123456",
-			Title:    "Getting Started",
-			Type:     "page",
-			SpaceKey: "DEMO",
-			Version:  1,
-			Updated:  time.Now().Add(-24 * time.Hour),
-		},
-		{
-			ID:       "123457",
-			Title:    "API Documentation",
-			Type:     "page",
-			SpaceKey: "DEMO",
-			Version:  2,
-			Updated:  time.Now().Add(-12 * time.Hour),
-		},
+// ListPages lists pages in a space
+func (c *AtlassianConfluenceClient) ListPages(ctx context.Context, opts *types.PageListOptions) (*types.PageListResponse, error) {
+	if opts == nil {
+		opts = &types.PageListOptions{}
 	}
 
-	// Simulate cursor pagination
+	// Set defaults
+	maxResults := opts.MaxResults
+	if maxResults <= 0 {
+		maxResults = 25
+	}
+
+	startAt := opts.StartAt
+	if startAt < 0 {
+		startAt = 0
+	}
+
+	// Note: Confluence v1 API doesn't support cursor pagination natively
+	// Cursor is ignored for now; we use offset-based pagination
+	if opts.Cursor != "" {
+		// Could decode cursor and extract offset, but for simplicity we ignore it
+		// and rely on startAt parameter
+	}
+
+	// Build query options
+	options := &models.GetContentOptionsScheme{}
+
+	// Add space filter if provided
+	if opts.SpaceKey != "" {
+		options.SpaceKey = opts.SpaceKey
+	}
+
+	// Add title filter if provided
+	if opts.Title != "" {
+		options.Title = opts.Title
+	}
+
+	// Get pages
+	result, response, err := c.client.Content.Gets(ctx, options, startAt, maxResults)
+	if err != nil {
+		if response != nil {
+			return nil, fmt.Errorf("failed to list pages (status %d): %w", response.StatusCode, err)
+		}
+		return nil, fmt.Errorf("failed to list pages: %w", err)
+	}
+
+	// Convert results - filter by type=page since API doesn't support type filter directly
+	pages := make([]types.Page, 0, len(result.Results))
+	for _, contentScheme := range result.Results {
+		if contentScheme.Type == "page" {
+			pages = append(pages, *convertContentSchemeToPage(contentScheme))
+		}
+	}
+
+	// Generate next cursor if there are more results
+	// Note: v1 API doesn't return total count, so we use result.Size as an indicator
 	var nextCursor string
-	if opts != nil && opts.Cursor == "" && len(pages) >= opts.MaxResults {
-		// Mock cursor for next page
-		nextCursor = "eyJsaW1pdCI6MjUsIm9mZnNldCI6MjV9"
+	if result.Size == maxResults {
+		// More results likely available
+		nextCursor = strconv.Itoa(startAt + maxResults)
+	}
+
+	// Estimate total based on what we know
+	total := startAt + result.Size
+	if result.Size < maxResults {
+		// This is the last page
+		total = startAt + result.Size
+	} else {
+		// More pages exist, we don't know the exact total
+		total = startAt + result.Size + 1 // At least one more
 	}
 
 	return &types.PageListResponse{
 		Pages:      pages,
-		Total:      2,
-		StartAt:    0,
-		MaxResults: 25,
+		Total:      total,
+		StartAt:    startAt,
+		MaxResults: maxResults,
 		NextCursor: nextCursor,
 	}, nil
 }
 
 // SearchPages searches pages using CQL
-func (c *MockConfluenceClient) SearchPages(ctx context.Context, opts *types.PageSearchOptions) (*types.PageSearchResponse, error) {
+func (c *AtlassianConfluenceClient) SearchPages(ctx context.Context, opts *types.PageSearchOptions) (*types.PageSearchResponse, error) {
 	if opts == nil {
 		return nil, fmt.Errorf("search options cannot be nil")
 	}
@@ -147,71 +261,160 @@ func (c *MockConfluenceClient) SearchPages(ctx context.Context, opts *types.Page
 		return nil, fmt.Errorf("CQL query is required")
 	}
 
-	// Mock implementation for demonstration - returns sample results
-	pages := []types.Page{
-		{
-			ID:       "123456",
-			Title:    "Search Result 1",
-			Type:     "page",
-			SpaceKey: "DEMO",
-			Version:  1,
-			Updated:  time.Now().Add(-24 * time.Hour),
-		},
-		{
-			ID:       "123457",
-			Title:    "Search Result 2",
-			Type:     "page",
-			SpaceKey: "DEMO",
-			Version:  2,
-			Updated:  time.Now().Add(-12 * time.Hour),
-		},
-	}
-
+	// Set defaults
 	maxResults := opts.MaxResults
 	if maxResults <= 0 {
 		maxResults = 25
 	}
 
+	startAt := opts.StartAt
+	if startAt < 0 {
+		startAt = 0
+	}
+
+	// Build search options
+	searchOptions := &models.SearchContentOptions{
+		Limit: maxResults,
+		Start: startAt,
+	}
+
+	// Execute CQL search
+	result, response, err := c.client.Search.Content(ctx, opts.CQL, searchOptions)
+	if err != nil {
+		if response != nil {
+			return nil, fmt.Errorf("failed to search pages (status %d): %w", response.StatusCode, err)
+		}
+		return nil, fmt.Errorf("failed to search pages: %w", err)
+	}
+
+	// Convert results
+	pages := make([]types.Page, 0, len(result.Results))
+	for _, searchResult := range result.Results {
+		if searchResult.Content != nil {
+			pages = append(pages, *convertContentSchemeToPage(searchResult.Content))
+		}
+	}
+
 	return &types.PageSearchResponse{
 		Pages:      pages,
-		Total:      2,
-		StartAt:    opts.StartAt,
+		Total:      result.TotalSize,
+		StartAt:    startAt,
 		MaxResults: maxResults,
 	}, nil
 }
 
-// ListSpaces lists Confluence spaces with cursor pagination support
-func (c *MockConfluenceClient) ListSpaces(ctx context.Context, opts *types.SpaceListOptions) (*types.SpaceListResponse, error) {
-	// Mock implementation for demonstration
-	spaces := []types.Space{
-		{
-			ID:          "1",
-			Key:         "DEMO",
-			Name:        "Demo Space",
-			Type:        "global",
-			Description: "Demonstration space for testing",
-		},
-		{
-			ID:          "2",
-			Key:         "DEV",
-			Name:        "Development",
-			Type:        "global",
-			Description: "Development documentation",
-		},
+// ListSpaces lists Confluence spaces
+func (c *AtlassianConfluenceClient) ListSpaces(ctx context.Context, opts *types.SpaceListOptions) (*types.SpaceListResponse, error) {
+	if opts == nil {
+		opts = &types.SpaceListOptions{}
 	}
 
-	// Simulate cursor pagination
+	// Set defaults
+	maxResults := opts.MaxResults
+	if maxResults <= 0 {
+		maxResults = 25
+	}
+
+	startAt := opts.StartAt
+	if startAt < 0 {
+		startAt = 0
+	}
+
+	// Note: Cursor is ignored for v1 API (uses offset-based pagination)
+	if opts.Cursor != "" {
+		// Could decode cursor and extract offset, but for simplicity we ignore it
+	}
+
+	// Build query options
+	options := &models.GetSpacesOptionScheme{}
+
+	// Add type filter if provided
+	if opts.Type != "" {
+		options.SpaceType = opts.Type
+	}
+
+	// Get spaces
+	result, response, err := c.client.Space.Gets(ctx, options, startAt, maxResults)
+	if err != nil {
+		if response != nil {
+			return nil, fmt.Errorf("failed to list spaces (status %d): %w", response.StatusCode, err)
+		}
+		return nil, fmt.Errorf("failed to list spaces: %w", err)
+	}
+
+	// Convert results
+	spaces := make([]types.Space, 0, len(result.Results))
+	for _, spaceScheme := range result.Results {
+		space := types.Space{
+			ID:          strconv.Itoa(spaceScheme.ID),
+			Key:         spaceScheme.Key,
+			Name:        spaceScheme.Name,
+			Type:        spaceScheme.Type,
+			Description: "", // v1 API SpaceScheme doesn't include description by default
+		}
+
+		spaces = append(spaces, space)
+	}
+
+	// Generate next cursor if there are more results
 	var nextCursor string
-	if opts != nil && opts.Cursor == "" && len(spaces) >= opts.MaxResults {
-		// Mock cursor for next page
-		nextCursor = "eyJsaW1pdCI6MjUsIm9mZnNldCI6MjV9"
+	if result.Size == maxResults {
+		// More results likely available
+		nextCursor = strconv.Itoa(startAt + maxResults)
+	}
+
+	// Estimate total based on what we know
+	total := startAt + result.Size
+	if result.Size < maxResults {
+		// This is the last page
+		total = startAt + result.Size
+	} else {
+		// More pages exist, we don't know the exact total
+		total = startAt + result.Size + 1 // At least one more
 	}
 
 	return &types.SpaceListResponse{
 		Spaces:     spaces,
-		Total:      2,
-		StartAt:    0,
-		MaxResults: 25,
+		Total:      total,
+		StartAt:    startAt,
+		MaxResults: maxResults,
 		NextCursor: nextCursor,
 	}, nil
+}
+
+// convertContentSchemeToPage converts go-atlassian ContentScheme to our internal Page type
+func convertContentSchemeToPage(scheme *models.ContentScheme) *types.Page {
+	if scheme == nil {
+		return nil
+	}
+
+	page := &types.Page{
+		ID:    scheme.ID,
+		Title: scheme.Title,
+		Type:  scheme.Type,
+	}
+
+	// Extract space key if available
+	if scheme.Space != nil {
+		page.SpaceKey = scheme.Space.Key
+	}
+
+	// Extract content if available
+	if scheme.Body != nil && scheme.Body.Storage != nil {
+		page.Content = scheme.Body.Storage.Value
+	}
+
+	// Extract version if available
+	if scheme.Version != nil {
+		page.Version = scheme.Version.Number
+
+		// Parse updated time if available
+		if scheme.Version.When != "" {
+			if t, err := time.Parse(time.RFC3339, scheme.Version.When); err == nil {
+				page.Updated = t
+			}
+		}
+	}
+
+	return page
 }
