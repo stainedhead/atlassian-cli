@@ -1,6 +1,6 @@
 module atlassian-cli
 
-go 1.21
+go 1.24
 
 require (
 	github.com/ctreminiom/go-atlassian v1.6.1

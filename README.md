@@ -2,7 +2,7 @@
 
 A modern command-line interface for JIRA and Confluence that transforms REST API complexity into intuitive developer workflows.
 
-[![Go Version](https://img.shields.io/badge/go-1.21-blue.svg)](https://golang.org/doc/devel/release.html)
+[![Go Version](https://img.shields.io/badge/go-1.24-blue.svg)](https://golang.org/doc/devel/release.html)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)](#)
 
@@ -148,7 +148,7 @@ atlassian-cli page list
 
 ### Prerequisites
 
-- Go 1.21 or later
+- Go 1.24 or later
 - Make
 
 ### Building from Source

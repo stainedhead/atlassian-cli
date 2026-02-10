@@ -40,7 +40,7 @@ The Atlassian CLI follows a modular, layered architecture designed for maintaina
 ## Technology Stack
 
 ### Core Technologies
-- **Language**: Go 1.21+
+- **Language**: Go 1.24+
 - **CLI Framework**: Cobra (command structure and parsing)
 - **Configuration**: Viper (hierarchical configuration management)
 - **HTTP Client**: Standard library with custom retry logic

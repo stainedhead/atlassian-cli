@@ -15,7 +15,7 @@ Thank you for your interest in contributing to Atlassian CLI! This document prov
 
 ### Prerequisites
 
-- **Go 1.21+**: Required for building and testing
+- **Go 1.24+**: Required for building and testing
 - **Make**: For build automation
 - **golangci-lint**: For code quality checks
 - **Git**: For version control

@@ -501,7 +501,7 @@ stages:
 
 ```dockerfile
 # Dockerfile.ci
-FROM golang:1.21-alpine AS builder
+FROM golang:1.24-alpine AS builder
 
 # Install Atlassian CLI
 RUN apk add --no-cache curl bash
