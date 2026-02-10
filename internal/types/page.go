@@ -58,7 +58,8 @@ type Space struct {
 type SpaceListOptions struct {
 	Type       string `json:"type"`
 	MaxResults int    `json:"maxResults"`
-	StartAt    int    `json:"startAt"`
+	StartAt    int    `json:"startAt"` // Retained for backward compatibility
+	Cursor     string `json:"cursor"`  // Cursor-based pagination for Confluence v2
 }
 
 // SpaceListResponse represents the response from listing spaces
@@ -67,6 +68,7 @@ type SpaceListResponse struct {
 	Total      int     `json:"total"`
 	StartAt    int     `json:"startAt"`
 	MaxResults int     `json:"maxResults"`
+	NextCursor string  `json:"nextCursor"` // Cursor for next page of results (Confluence v2)
 }
 
 // PageSearchOptions represents options for searching pages with CQL

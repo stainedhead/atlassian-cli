@@ -140,6 +140,7 @@ func newListCmd(tokenManager auth.TokenManager) *cobra.Command {
 		title      string
 		maxResults int
 		startAt    int
+		cursor     string
 	)
 
 	cmd := &cobra.Command{
@@ -150,9 +151,12 @@ func newListCmd(tokenManager auth.TokenManager) *cobra.Command {
 Examples:
   # List pages in default space
   atlassian-cli page list
-  
+
   # List pages with specific title
-  atlassian-cli page list --title "API"`,
+  atlassian-cli page list --title "API"
+
+  # Use cursor-based pagination
+  atlassian-cli page list --cursor "eyJsaW1pdCI6MjUsIm9mZnNldCI6MjV9"`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg, err := config.LoadConfig(cmdutil.GetConfigPath(cmd))
 			if err != nil {
@@ -183,6 +187,7 @@ Examples:
 				Title:      title,
 				MaxResults: maxResults,
 				StartAt:    startAt,
+				Cursor:     cursor,
 			}
 
 			response, err := client.ListPages(context.Background(), opts)
@@ -197,7 +202,8 @@ Examples:
 	cmd.Flags().StringVar(&spaceKey, "space", "", "Confluence space key (overrides default)")
 	cmd.Flags().StringVar(&title, "title", "", "Filter by title")
 	cmd.Flags().IntVar(&maxResults, "max-results", 25, "Maximum number of results")
-	cmd.Flags().IntVar(&startAt, "start-at", 0, "Starting index for pagination")
+	cmd.Flags().IntVar(&startAt, "start-at", 0, "Starting index for pagination (deprecated, use --cursor)")
+	cmd.Flags().StringVar(&cursor, "cursor", "", "Cursor for pagination (preferred over --start-at)")
 
 	return cmd
 }
@@ -313,6 +319,11 @@ func outputPageList(cmd *cobra.Command, response *types.PageListResponse) error 
 			response.StartAt+1,
 			response.StartAt+len(response.Pages),
 			response.Total)
+
+		if response.NextCursor != "" {
+			fmt.Fprintf(cmd.OutOrStdout(), "\nNext cursor: %s\n", response.NextCursor)
+			fmt.Fprintf(cmd.OutOrStdout(), "Use --cursor \"%s\" to fetch the next page\n", response.NextCursor)
+		}
 	}
 
 	return nil

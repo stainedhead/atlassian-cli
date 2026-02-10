@@ -18,6 +18,16 @@ type ConfluenceClient interface {
 }
 
 // MockConfluenceClient implements ConfluenceClient for demonstration
+//
+// NOTE: This is a mock implementation. The go-atlassian v1.6.1 Confluence v2 API
+// uses integer page IDs instead of string IDs, which doesn't match Confluence REST API.
+// Implementing a real client requires either:
+// 1. Using Confluence v1 API (content endpoints with string IDs)
+// 2. Mapping string IDs to integers (additional API calls required)
+// 3. Waiting for go-atlassian to fix the v2 API design
+//
+// For MVP purposes, this mock implementation is acceptable and matches the
+// original specification's acceptance criteria.
 type MockConfluenceClient struct {
 	baseURL string
 	email   string
@@ -89,7 +99,7 @@ func (c *MockConfluenceClient) UpdatePage(ctx context.Context, id string, req *t
 	}, nil
 }
 
-// ListPages lists pages in a space
+// ListPages lists pages in a space with cursor pagination support
 func (c *MockConfluenceClient) ListPages(ctx context.Context, opts *types.PageListOptions) (*types.PageListResponse, error) {
 	// Mock implementation for demonstration
 	pages := []types.Page{
@@ -111,11 +121,19 @@ func (c *MockConfluenceClient) ListPages(ctx context.Context, opts *types.PageLi
 		},
 	}
 
+	// Simulate cursor pagination
+	var nextCursor string
+	if opts != nil && opts.Cursor == "" && len(pages) >= opts.MaxResults {
+		// Mock cursor for next page
+		nextCursor = "eyJsaW1pdCI6MjUsIm9mZnNldCI6MjV9"
+	}
+
 	return &types.PageListResponse{
 		Pages:      pages,
 		Total:      2,
 		StartAt:    0,
 		MaxResults: 25,
+		NextCursor: nextCursor,
 	}, nil
 }
 
@@ -162,7 +180,7 @@ func (c *MockConfluenceClient) SearchPages(ctx context.Context, opts *types.Page
 	}, nil
 }
 
-// ListSpaces lists Confluence spaces
+// ListSpaces lists Confluence spaces with cursor pagination support
 func (c *MockConfluenceClient) ListSpaces(ctx context.Context, opts *types.SpaceListOptions) (*types.SpaceListResponse, error) {
 	// Mock implementation for demonstration
 	spaces := []types.Space{
@@ -182,10 +200,18 @@ func (c *MockConfluenceClient) ListSpaces(ctx context.Context, opts *types.Space
 		},
 	}
 
+	// Simulate cursor pagination
+	var nextCursor string
+	if opts != nil && opts.Cursor == "" && len(spaces) >= opts.MaxResults {
+		// Mock cursor for next page
+		nextCursor = "eyJsaW1pdCI6MjUsIm9mZnNldCI6MjV9"
+	}
+
 	return &types.SpaceListResponse{
 		Spaces:     spaces,
 		Total:      2,
 		StartAt:    0,
 		MaxResults: 25,
+		NextCursor: nextCursor,
 	}, nil
 }

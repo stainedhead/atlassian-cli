@@ -31,6 +31,7 @@ func newListCmd(tokenManager auth.TokenManager) *cobra.Command {
 		spaceType  string
 		maxResults int
 		startAt    int
+		cursor     string
 	)
 
 	cmd := &cobra.Command{
@@ -41,9 +42,12 @@ func newListCmd(tokenManager auth.TokenManager) *cobra.Command {
 Examples:
   # List all spaces
   atlassian-cli space list
-  
+
   # List only personal spaces
-  atlassian-cli space list --type personal`,
+  atlassian-cli space list --type personal
+
+  # Use cursor-based pagination
+  atlassian-cli space list --cursor "eyJsaW1pdCI6MjUsIm9mZnNldCI6MjV9"`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg, err := config.LoadConfig(cmdutil.GetConfigPath(cmd))
 			if err != nil {
@@ -65,6 +69,7 @@ Examples:
 				Type:       spaceType,
 				MaxResults: maxResults,
 				StartAt:    startAt,
+				Cursor:     cursor,
 			}
 
 			response, err := client.ListSpaces(context.Background(), opts)
@@ -78,7 +83,8 @@ Examples:
 
 	cmd.Flags().StringVar(&spaceType, "type", "", "Filter by space type (global, personal)")
 	cmd.Flags().IntVar(&maxResults, "max-results", 25, "Maximum number of results")
-	cmd.Flags().IntVar(&startAt, "start-at", 0, "Starting index for pagination")
+	cmd.Flags().IntVar(&startAt, "start-at", 0, "Starting index for pagination (deprecated, use --cursor)")
+	cmd.Flags().StringVar(&cursor, "cursor", "", "Cursor for pagination (preferred over --start-at)")
 
 	return cmd
 }
@@ -120,6 +126,11 @@ func outputSpaceList(cmd *cobra.Command, response *types.SpaceListResponse) erro
 			response.StartAt+1,
 			response.StartAt+len(response.Spaces),
 			response.Total)
+
+		if response.NextCursor != "" {
+			fmt.Fprintf(cmd.OutOrStdout(), "\nNext cursor: %s\n", response.NextCursor)
+			fmt.Fprintf(cmd.OutOrStdout(), "Use --cursor \"%s\" to fetch the next page\n", response.NextCursor)
+		}
 	}
 
 	return nil
