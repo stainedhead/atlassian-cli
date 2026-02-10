@@ -49,13 +49,18 @@ The Atlassian CLI follows a modular, layered architecture designed for maintaina
 ### Dependencies
 ```go
 // Core dependencies
-github.com/spf13/cobra      // CLI framework
-github.com/spf13/viper      // Configuration management
-github.com/stretchr/testify // Testing assertions
-gopkg.in/yaml.v3           // YAML processing
+github.com/spf13/cobra              // CLI framework
+github.com/spf13/viper              // Configuration management
+github.com/ctreminiom/go-atlassian  // Atlassian API SDK (v1 + v3)
+github.com/stretchr/testify         // Testing assertions
+gopkg.in/yaml.v3                    // YAML processing
+
+// Security dependencies
+github.com/zalando/go-keyring       // OS keychain integration
+golang.org/x/crypto                 // AES-256-GCM encryption
 
 // Optional dependencies
-github.com/olekukonko/tablewriter // Table formatting
+github.com/olekukonko/tablewriter   // Table formatting
 ```
 
 ### Build System
@@ -154,23 +159,101 @@ type MemoryTokenManager struct {
 
 ## API Client Architecture
 
-### Client Interface
+### Real API Integration
 
+The CLI uses production-ready API clients for both JIRA and Confluence:
+
+#### JIRA Client (go-atlassian v3)
 ```go
 type JiraClient interface {
     CreateIssue(ctx context.Context, req *CreateIssueRequest) (*Issue, error)
     GetIssue(ctx context.Context, key string) (*Issue, error)
     UpdateIssue(ctx context.Context, key string, req *UpdateIssueRequest) (*Issue, error)
-    SearchIssues(ctx context.Context, jql string, opts *SearchOptions) (*SearchResult, error)
+    ListIssues(ctx context.Context, opts *IssueListOptions) (*IssueListResponse, error)
+    SearchIssues(ctx context.Context, opts *IssueSearchOptions) (*IssueSearchResponse, error)
+    ListProjects(ctx context.Context, opts *ProjectListOptions) (*ProjectListResponse, error)
+    GetProject(ctx context.Context, key string) (*Project, error)
+    GetTransitions(ctx context.Context, issueKey string) ([]Transition, error)
+    TransitionIssue(ctx context.Context, issueKey string, transitionID string) error
 }
 
+// Implementation using go-atlassian v3
+type AtlassianJiraClient struct {
+    client *v3.Client
+}
+
+func NewAtlassianJiraClient(baseURL, email, token string) (*AtlassianJiraClient, error) {
+    instance, err := v3.New(nil, baseURL)
+    if err != nil {
+        return nil, err
+    }
+    instance.Auth.SetBasicAuth(email, token)
+    return &AtlassianJiraClient{client: instance}, nil
+}
+```
+
+#### Confluence Client (go-atlassian v1)
+```go
 type ConfluenceClient interface {
     CreatePage(ctx context.Context, req *CreatePageRequest) (*Page, error)
     GetPage(ctx context.Context, id string) (*Page, error)
     UpdatePage(ctx context.Context, id string, req *UpdatePageRequest) (*Page, error)
-    ListPages(ctx context.Context, spaceKey string, opts *ListOptions) (*PageList, error)
+    ListPages(ctx context.Context, opts *PageListOptions) (*PageListResponse, error)
+    SearchPages(ctx context.Context, opts *PageSearchOptions) (*PageSearchResponse, error)
+    ListSpaces(ctx context.Context, opts *SpaceListOptions) (*SpaceListResponse, error)
+}
+
+// Implementation using go-atlassian v1 (string ID compatible)
+type AtlassianConfluenceClient struct {
+    client *confluence.Client
+}
+
+func NewAtlassianConfluenceClient(baseURL, email, token string) (*AtlassianConfluenceClient, error) {
+    instance, err := confluence.New(nil, baseURL)
+    if err != nil {
+        return nil, err
+    }
+    instance.Auth.SetBasicAuth(email, token)
+    return &AtlassianConfluenceClient{client: instance}, nil
 }
 ```
+
+**Why v1 for Confluence?** The go-atlassian v2 API uses integer page IDs which are incompatible with Confluence's string-based REST API. The v1 API properly supports string IDs and provides all required functionality with stable, well-documented endpoints.
+
+### Client Factory Pattern
+
+Centralized client management with connection pooling and caching:
+
+```go
+type Factory struct {
+    jiraClients       map[ClientKey]jira.JiraClient
+    confluenceClients map[ClientKey]confluence.ConfluenceClient
+    mu                sync.RWMutex
+    httpClient        *http.Client
+}
+
+func NewFactory() *Factory {
+    transport := &http.Transport{
+        MaxIdleConns:        100,
+        MaxIdleConnsPerHost: 10,
+        IdleConnTimeout:     90 * time.Second,
+    }
+
+    return &Factory{
+        jiraClients:       make(map[ClientKey]jira.JiraClient),
+        confluenceClients: make(map[ClientKey]confluence.ConfluenceClient),
+        httpClient:        &http.Client{Transport: transport},
+    }
+}
+```
+
+### Thread-Safe Design
+
+All clients are designed for concurrent usage:
+- Double-checked locking in factory
+- Per-key RWMutex in cache
+- Context-based configuration (no global state)
+- Atomic file operations
 
 ### HTTP Client Configuration
 

@@ -21,8 +21,11 @@ The Atlassian CLI is a modern command-line interface that transforms JIRA and Co
 
 ### Secure Authentication
 - **API token-based**: Industry-standard authentication with Atlassian Cloud
-- **Memory-only storage**: No credentials persisted to disk for security
+- **Tiered storage**: OS keychain (primary) → Encrypted file (fallback) → Memory (temporary)
+- **AES-256-GCM encryption**: Military-grade encryption for file-based credential storage
+- **Token validation**: Validates credentials before storage to catch errors early
 - **Multi-instance support**: Work with multiple Atlassian instances simultaneously
+- **Automatic migration**: Seamlessly migrates from plaintext config storage
 
 ### Multi-Format Output
 - **JSON**: Perfect for scripting and automation pipelines
@@ -30,9 +33,13 @@ The Atlassian CLI is a modern command-line interface that transforms JIRA and Co
 - **YAML**: Configuration-friendly format for documentation
 
 ### Enterprise Features
-- **Intelligent caching**: 5-minute TTL reduces API calls and improves performance
+- **Real API Integration**: Production-ready JIRA (v3) and Confluence (v1) clients
+- **Thread-safe caching**: Per-key RWMutex locking with atomic file writes
+- **Connection pooling**: Efficient HTTP connection reuse (100 max idle, 10 per host)
 - **Retry logic**: Exponential backoff with jitter for reliable operations
-- **Audit logging**: Structured event tracking for compliance requirements
+- **Audit logging**: Thread-safe structured event tracking for compliance
+- **Cursor pagination**: Efficient handling of large result sets
+- **Client factory**: Centralized client management with caching
 
 ## Target Users
 
